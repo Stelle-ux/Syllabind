@@ -1,0 +1,44 @@
+name: syllabind
+description: "Syllabind — aplikasi mobile agenda belajar siswa (offline-first)."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # --- Basis data & penyimpanan (lihat SPESIFIKASI-FINAL.md §7) ---
+  sqflite: ^2.4.1          # SQLite lokal, tanpa server
+  path: ^1.9.0             # menyusun path database & file
+  path_provider: ^2.1.5    # direktori internal aplikasi
+
+  # --- Lampiran (Gambar & File) ---
+  image_picker: ^1.1.2     # ambil gambar dari galeri / kamera
+  file_picker: ^8.1.6      # pilih file dokumen
+  mime: ^1.0.6             # tentukan tipe MIME berkas
+  open_filex: ^4.6.0       # buka lampiran dengan aplikasi bawaan
+
+  # --- Pengaturan ---
+  dynamic_color: ^1.7.0    # tema mengikuti warna sistem (opsional, ringan)
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # sqflite untuk dijalankan di Dart VM (unit test di Windows).
+  # Di perangkat tetap memakai sqflite biasa.
+  sqflite_common_ffi: ^2.3.4
+
+# Catatan: TIDAK dipakai (sengaja) —
+#   flutter_local_notifications, archive, shared_preferences, intl.
+# Ketiganya ada di Syllabind_Project_Package (ARSIP), di luar ruang lingkup.
+
+flutter:
+  uses-material-design: true
