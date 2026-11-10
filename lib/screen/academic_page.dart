@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import 'package:syllabind/function/mapel.dart';
@@ -7,19 +9,8 @@ import 'package:syllabind/services/index.dart';
 import 'package:syllabind/tools/index.dart';
 import 'package:syllabind/screen/detail_mapel_page.dart';
 
-/// Halaman 2 — Academic.
-///
-/// Di atas ada slider 3 tab: **[Mata Pelajaran | Catatan | Tugas]**.
-/// Tab pertama (Mata Pelajaran) adalah tab yang terbuka saat pertama kali
-/// pengguna pindah ke halaman ini. Kartu mapel bisa ditekan → Detail Mapel.
-///
-/// Tata letak mengikuti `syllabind-wireframe/ukom_mobile_layout_wireframe.drawio`
-/// layar 2 & 3: kolom cari di atas daftar, kartu mapel berisi warna + nama +
-/// keterangan + jumlah materi/tugas.
-///
-/// Seluruh teks diambil dari kamus [t]/[tp] — tidak ada literal berbahasa
-/// Indonesia yang tertinggal di berkas ini, supaya mode Inggris benar-benar
-/// Inggris di semua layar.
+/// Halaman Academic: 3 tab (Mata Pelajaran, Catatan, Tugas).
+/// dipakai di main.dart:RumahAplikasi halaman[1]
 class HalamanAcademic extends StatefulWidget {
   const HalamanAcademic({super.key});
 
@@ -28,10 +19,10 @@ class HalamanAcademic extends StatefulWidget {
 }
 
 class _HalamanAcademicState extends State<HalamanAcademic> {
-  late final MapelRepository _mapelRepo;
+  late final MapelService _mapelRepo;
 
-  /// Kendali kotak cari mapel. Disimpan di State supaya isinya tidak hilang
-  /// setiap kali halaman dibangun ulang (`IndexedStack` menahan state tab).
+  /// Controller pencarian mapel, disimpan di State agar tidak hilang saat rebuild (IndexedStack).
+  /// dipakai di _tabMapel, _saring, dispose
   final _cari = TextEditingController();
 
   List<Mapel> _mapel = [];
@@ -42,7 +33,7 @@ class _HalamanAcademicState extends State<HalamanAcademic> {
   @override
   void initState() {
     super.initState();
-    _mapelRepo = MapelRepositoryImpl();
+    _mapelRepo = MapelServiceImpl();
     _segarkan();
   }
 
@@ -53,12 +44,7 @@ class _HalamanAcademicState extends State<HalamanAcademic> {
   }
 
   /// Memuat ulang daftar mata pelajaran dari database.
-  ///
-  /// Dipanggil saat initState, setelah tambah/edit/hapus mapel, dan
-  /// setelah kembali dari HalamanDetailMapel.
-  ///
-  /// **Reused in:** [initState], [_tambahMapel], [_tabMapel.onTap callback]
-  /// **Calls:** [MapelRepository.semua], [setState]
+  /// dipakai di initState, _tambahMapel, _tabMapel.onTap callback
   Future<void> _segarkan() async {
     setState(() => _muat = true);
     final d = await _mapelRepo.semua();
@@ -69,13 +55,8 @@ class _HalamanAcademicState extends State<HalamanAcademic> {
     });
   }
 
-  /// Menampilkan dialog tambah mapel lalu menyimpan ke database.
-  ///
-  /// Menggunakan [tanyaMapel] untuk input, lalu [MapelRepository.tambah].
-  /// Setelah berhasil, memanggil [_segarkan] untuk refresh UI.
-  ///
-  /// **Reused in:** [_tabMapel FAB onPressed], [Kosong onTombol]
-  /// **Calls:** [tanyaMapel], [MapelRepository.tambah], [_segarkan]
+  /// Menampilkan dialog tambah mapel lalu simpan ke database.
+  /// dipakai di _tabMapel FAB onPressed, Kosong onTombol
   Future<void> _tambahMapel() async {
     final hasil = await tanyaMapel(context);
     if (hasil == null) return;
@@ -89,18 +70,12 @@ class _HalamanAcademicState extends State<HalamanAcademic> {
     await _segarkan();
   }
 
-  /// Build utama halaman Academic dengan 3 tab: Mata Pelajaran, Catatan, Tugas.
-  ///
-  /// Tab 0 (Mata Pelajaran) adalah default. Setiap tab adalah widget stateful
-  /// terpisah (_TabCatatan, _TabTugas) yang mengelola state & repo sendiri.
-  ///
-  /// **Reused in:** (entry point from NavigationBar in main.dart)
-  /// **Calls:** [_tabMapel], [_TabCatatan], [_TabTugas], [DefaultTabController], [TabBar], [TabBarView], [t]
+  /// Build utama: 3 tab (Mata Pelajaran, Catatan, Tugas).
+  /// dipakai di main.dart:NavigationBar halaman[1]
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 3,
-      // initialIndex 0 = Mata Pelajaran → tab pertama yang dibuka.
       initialIndex: 0,
       child: Column(
         children: [
@@ -113,11 +88,7 @@ class _HalamanAcademicState extends State<HalamanAcademic> {
           ),
           Expanded(
             child: TabBarView(
-              children: [
-                _tabMapel(),
-                const _TabCatatan(),
-                const _TabTugas(),
-              ],
+              children: [_tabMapel(), const _TabCatatan(), const _TabTugas()],
             ),
           ),
         ],
@@ -125,129 +96,141 @@ class _HalamanAcademicState extends State<HalamanAcademic> {
     );
   }
 
-  // ── Tab 1: Mata Pelajaran ─────────────────────────────────
-  /// Membangun konten tab Mata Pelajaran.
-  ///
-  /// Menampilkan: loading indicator, atau Kosong (jika belum ada mapel),
-  /// atau ListView KartuMapel dengan RefreshIndicator.
-  /// FAB hanya muncul di tab ini (letak di dalam Scaffold tab).
-  ///
-  /// **Reused in:** [build] (TabBarView children[0])
-  /// **Calls:** [_KolomCari], [Kosong], [KartuMapel], [RefreshIndicator], [ListView.separated], [Navigator.push], [MaterialPageRoute], [HalamanDetailMapel], [_segarkan], [FloatingActionButton.extended], [_tambahMapel]
+  /// Menyaring daftar mapel berdasarkan kata kunci [kata].
+  /// dipakai di _tabMapel (ValueListenableBuilder), _pilihSemua
+  List<Mapel> _saring(String kata) {
+    final q = kata.trim().toLowerCase();
+    if (q.isEmpty) return _mapel;
+    return _mapel
+        .where(
+          (m) =>
+              m.nama.toLowerCase().contains(q) ||
+              (m.deskripsi ?? '').toLowerCase().contains(q),
+        )
+        .toList();
+  }
+
+  /// Build tab Mata Pelajaran: kotak cari + tombol "Mulai pilih" + daftar kartu.
+  /// FAB "Tambah Mata Pelajaran" jadi aksi utama (create).
+  /// dipakai di HalamanAcademic.build (TabBarView children[0])
   Widget _tabMapel() {
-    if (_muat) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    final tampil = _saring(_cari.text);
-
-    return Scaffold(
-      // FAB diletakkan di dalam tab supaya hanya muncul di tab ini.
-      backgroundColor: Colors.transparent,
-      body: _mapel.isEmpty
-          ? Kosong(
-              ikon: Icons.menu_book_outlined,
-              judul: t('ak_kosong_mapel'),
-              pesan: t('ak_kosong_mapel_pesan'),
-              labelTombol: t('ak_kosong_mapel_tombol'),
-              onTombol: _tambahMapel,
-            )
-          : Column(
-              children: [
-                if (!_modeSeleksi) ...[
-                  Align(
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _cari,
+      builder: (_, val, __) {
+        final tampil = _saring(val.text);
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Column(
+            children: [
+              _KolomCari(
+                kendali: _cari,
+                petunjuk: t('ak_cari_mapel'),
+                onUbah: (_) {},
+              ),
+              if (!_modeSeleksi && tampil.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    Jarak.j14,
+                    0,
+                    Jarak.j14,
+                    Jarak.j4,
+                  ),
+                  child: Align(
                     alignment: Alignment.centerRight,
-                    child: TextButton(
+                    child: TextButton.icon(
                       onPressed: _toggleSeleksi,
-                      child: Text(t('ak_mulai_pilih')),
+                      icon: const Icon(Icons.checklist, size: Ikon.sm),
+                      label: Text(t('ak_mulai_pilih')),
                     ),
                   ),
-                ],
-                if (_modeSeleksi && tampil.isNotEmpty) ...[
-                  _barSeleksi(tampil),
-                  const SizedBox(height: Jarak.j4),
-                ],
-                // Kolom cari mapel — wireframe layar 3:
-                // "[Q] Search subjects or instructors...".
-                _KolomCari(
-                  kendali: _cari,
-                  petunjuk: t('ak_cari_mapel'),
-                  onUbah: (_) => setState(() {}),
                 ),
-                Expanded(
-                  child: tampil.isEmpty
-                      ? Kosong(
-                          ikon: Icons.search_off,
-                          judul: t('ak_tidak_ditemukan'),
-                          pesan: t('ak_coba_kata'),
-                        )
-                      : RefreshIndicator(
-                          onRefresh: _segarkan,
-                          child: ListView.separated(
-                            padding: EdgeInsets.fromLTRB(
-                              Jarak.j14,
-                              Jarak.j4,
-                              Jarak.j14,
-                              Ukuran.bebasFAB +
-                                  MediaQuery.viewPaddingOf(context).bottom,
-                            ),
-                            itemCount: tampil.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(height: Jarak.j10),
-                            itemBuilder: (_, i) {
-                              final m = tampil[i];
-                              final sudahDipilih = _terpilih.contains(m.id);
-                              return KartuMapel(
-                                nama: m.nama,
-                                deskripsi: m.deskripsi,
-                                warnaHex: m.warna,
-                                jumlahMateri: m.jumlahMateri,
-                                jumlahTugas: m.jumlahTugas,
-                                terpilih:
-                                    _modeSeleksi ? sudahDipilih : null,
-                                onDipilih: _modeSeleksi
-                                    ? (v) => _pilih(m.id!, v ?? false)
-                                    : null,
-                                onTap: _modeSeleksi
-                                    ? () => _pilih(m.id!, !sudahDipilih)
-                                    : () async {
-                                        await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                HalamanDetailMapel(mapel: m),
-                                          ),
-                                        );
-                                        await _segarkan();
-                                      },
-                              );
-                            },
+              if (_modeSeleksi)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Jarak.j4),
+                  child: _barSeleksi(tampil),
+                ),
+              Expanded(
+                child: _muat
+                    ? const Center(child: CircularProgressIndicator())
+                    : tampil.isEmpty
+                    ? Kosong(
+                        ikon: Icons.book_outlined,
+                        judul: val.text.isEmpty
+                            ? t('ak_kosong_mapel')
+                            : t('ak_tidak_ditemukan'),
+                        pesan: val.text.isEmpty
+                            ? t('ak_kosong_mapel_pesan')
+                            : t('ak_coba_kata'),
+                        labelTombol: val.text.isEmpty
+                            ? t('ak_mapel_fab')
+                            : null,
+                        onTombol: val.text.isEmpty ? _tambahMapel : null,
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _segarkan,
+                        child: ListView.separated(
+                          padding: EdgeInsets.fromLTRB(
+                            Jarak.j14,
+                            Jarak.j10,
+                            Jarak.j14,
+                            Ukuran.bebasFAB +
+                                MediaQuery.viewPaddingOf(context).bottom,
                           ),
+                          itemCount: tampil.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: Jarak.j10),
+                          itemBuilder: (_, i) {
+                            final m = tampil[i];
+                            final sudahDipilih = _terpilih.contains(m.id);
+                            return KartuMapel(
+                              nama: m.nama,
+                              deskripsi: m.deskripsi,
+                              warnaHex: m.warna,
+                              jumlahMateri: m.jumlahMateri,
+                              jumlahTugas: m.jumlahTugas,
+                              terpilih: _modeSeleksi ? sudahDipilih : null,
+                              onDipilih: _modeSeleksi
+                                  ? (v) => _pilih(m.id!, v ?? false)
+                                  : null,
+                              onTap: _modeSeleksi
+                                  ? () => _pilih(m.id!, !sudahDipilih)
+                                  : () async {
+                                      await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              HalamanDetailMapel(mapel: m),
+                                        ),
+                                      );
+                                      await _segarkan();
+                                    },
+                            );
+                          },
                         ),
+                      ),
+              ),
+            ],
+          ),
+          floatingActionButton: tampil.isEmpty
+              ? null
+              : FloatingActionButton.extended(
+                  onPressed: _tambahMapel,
+                  icon: const Icon(Icons.add),
+                  label: Text(t('ak_tambah_mapel')),
                 ),
-              ],
-            ),
-      floatingActionButton: _modeSeleksi
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: _tambahMapel,
-              icon: const Icon(Icons.add),
-              label: Text(t('ak_mapel_fab')),
-            ),
+        );
+      },
     );
   }
 
-  /// Bar kontrol mode seleksi: jumlah terpilih, pilih semua/batal, dan tombol hapus.
+  /// Bar kontrol mode seleksi: jumlah terpilih, pilih semua/batal, tombol hapus.
+  /// dipakai di _tabMapel
   Widget _barSeleksi(List<Mapel> tampil) {
-    final semuaTerpilih = tampil.isNotEmpty &&
+    final semuaTerpilih =
+        tampil.isNotEmpty &&
         tampil.every((m) => m.id != null && _terpilih.contains(m.id!));
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        Jarak.j14,
-        Jarak.j4,
-        Jarak.j14,
-        Jarak.j4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: Jarak.j14),
       child: Wrap(
         spacing: Jarak.j8,
         runSpacing: Jarak.j8,
@@ -286,47 +269,8 @@ class _HalamanAcademicState extends State<HalamanAcademic> {
     );
   }
 
-  /// Nyalakan/matikan mode seleksi. Saat dimatikan, kosongkan pilihan.
-  void _toggleSeleksi() {
-    setState(() {
-      _modeSeleksi = !_modeSeleksi;
-      if (!_modeSeleksi) _terpilih.clear();
-    });
-  }
-
-  /// Tambah atau hapus [id] dari pilihan.
-  void _pilih(int id, bool dipilih) {
-    setState(() {
-      if (dipilih) {
-        _terpilih.add(id);
-      } else {
-        _terpilih.remove(id);
-      }
-    });
-  }
-
-  /// Pilih semua mapel yang sedang ditampilkan.
-  void _pilihSemua() {
-    setState(() {
-      for (final m in _saring(_cari.text)) {
-        if (m.id != null) _terpilih.add(m.id!);
-      }
-    });
-  }
-
-  /// Kosongkan semua pilihan dan keluar mode seleksi.
-  void _batalPilihSemua() {
-    setState(() {
-      _terpilih.clear();
-      _modeSeleksi = false;
-    });
-  }
-
   /// Konfirmasi lalu hapus semua mapel terpilih ke Sampah (soft delete).
-  ///
-  /// Menggunakan [konfirmasiHitungMundur] dengan hitung mundur 5 detik
-  /// supaya tombol Hapus terkunci selama hitung mundur. Tombol Batal
-  /// bisa ditekan kapan saja untuk membatalkan tanpa perlu pilih apapun.
+  /// dipakai di _barSeleksi (ElevatedButton.icon onPressed)
   Future<void> _hapusTerpilih() async {
     final lanjut = await konfirmasiHitungMundur(
       context,
@@ -341,9 +285,10 @@ class _HalamanAcademicState extends State<HalamanAcademic> {
     if (lanjut != true) return;
 
     final hapus = LayananHapus(
-      mapelRepo: MapelRepositoryImpl(),
-      materiRepo: MateriRepositoryImpl(),
-      lampiranRepo: LampiranRepositoryImpl(),
+      mapelRepo: MapelServiceImpl(),
+      materiRepo: MateriServiceImpl(),
+      tugasRepo: TugasServiceImpl(),
+      lampiranRepo: LampiranServiceImpl(),
     );
     final jumlah = _terpilih.length;
     for (final id in _terpilih.toList()) {
@@ -359,22 +304,44 @@ class _HalamanAcademicState extends State<HalamanAcademic> {
     );
   }
 
-  /// Menyaring daftar mapel berdasarkan kata kunci [kata].
-  ///
-  /// Pencocokan dilakukan pada nama dan keterangan mapel, tanpa membedakan
-  /// huruf besar/kecil. Dijalankan di memori karena daftar mapel selalu
-  /// dimuat utuh (jumlahnya kecil), jadi tidak perlu query tambahan.
-  ///
-  /// **Reused in:** [_tabMapel] (ValueListenableBuilder)
-  /// **Calls:** [String.toLowerCase], [String.contains]
-  List<Mapel> _saring(String kata) {
-    final q = kata.trim().toLowerCase();
-    if (q.isEmpty) return _mapel;
-    return _mapel
-        .where((m) =>
-            m.nama.toLowerCase().contains(q) ||
-            (m.deskripsi ?? '').toLowerCase().contains(q))
-        .toList();
+  /// Nyalakan/matikan mode seleksi. Saat dimatikan, kosongkan pilihan.
+  /// dipakai di _tabMapel (TextButton onPressed)
+  void _toggleSeleksi() {
+    setState(() {
+      _modeSeleksi = !_modeSeleksi;
+      if (!_modeSeleksi) _terpilih.clear();
+    });
+  }
+
+  /// Tambah atau hapus [id] dari pilihan.
+  /// dipakai di _tabMapel (KartuMapel onDipilih, onTap)
+  void _pilih(int id, bool dipilih) {
+    setState(() {
+      if (dipilih) {
+        _terpilih.add(id);
+      } else {
+        _terpilih.remove(id);
+      }
+    });
+  }
+
+  /// Pilih semua mapel yang sedang ditampilkan.
+  /// dipakai di _barSeleksi (TextButton onPressed)
+  void _pilihSemua() {
+    setState(() {
+      for (final m in _saring(_cari.text)) {
+        if (m.id != null) _terpilih.add(m.id!);
+      }
+    });
+  }
+
+  /// Kosongkan semua pilihan dan keluar mode seleksi.
+  /// dipakai di _barSeleksi (TextButton onPressed)
+  void _batalPilihSemua() {
+    setState(() {
+      _terpilih.clear();
+      _modeSeleksi = false;
+    });
   }
 }
 
@@ -383,11 +350,7 @@ class _HalamanAcademicState extends State<HalamanAcademic> {
 // ─────────────────────────────────────────────────────────────
 
 /// Kotak pencarian dengan ikon kaca pembesar + padding dari token.
-///
-/// Dipakai di semua tab supaya jarak dan tinggi kotak cari seragam.
-///
-/// **Reused in:** [_HalamanAcademicState._tabMapel], [_TabCatatan.build], [_TabTugas.build]
-/// **Calls:** [TextField], [Jarak] tokens
+/// dipakai di _HalamanAcademicState._tabMapel, _TabCatatan.build, _TabTugas.build
 class _KolomCari extends StatelessWidget {
   final TextEditingController kendali;
   final String petunjuk;
@@ -420,12 +383,61 @@ class _KolomCari extends StatelessWidget {
   }
 }
 
+/// Lembar bawah untuk memilih satu mata pelajaran tujuan saat menambah
+/// catatan/tugas langsung dari halaman Academic.
+/// dipakai di _TabCatatanState._tambahCatatan, _TabTugasState._tambahTugas
+Future<int?> _pilihMapelTujuan(BuildContext context, List<Mapel> daftar) {
+  return showModalBottomSheet<int>(
+    context: context,
+    showDragHandle: true,
+    builder: (ctx) => SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              Jarak.j16,
+              0,
+              Jarak.j16,
+              Jarak.j4,
+            ),
+            child: Text(
+              t('lib_pilih_mapel'),
+              style: Theme.of(ctx).textTheme.titleMedium,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              Jarak.j16,
+              0,
+              Jarak.j16,
+              Jarak.j8,
+            ),
+            child: Text(
+              t('lib_pilih_mapel_pesan'),
+              style: Theme.of(ctx).textTheme.bodySmall,
+            ),
+          ),
+          for (final m in daftar)
+            ListTile(
+              leading: const Icon(Icons.book_outlined),
+              title: Text(m.nama),
+              onTap: () => Navigator.pop(ctx, m.id),
+            ),
+          const SizedBox(height: Jarak.j8),
+        ],
+      ),
+    ),
+  );
+}
+
 // ─────────────────────────────────────────────────────────────
 // Tab 2 — Catatan (semua materi lintas mapel)
 // ─────────────────────────────────────────────────────────────
 
 /// Tab Catatan: menampilkan semua materi (catatan) lintas semua mapel.
-/// Mendukung pencarian teks via TextField di header.
+/// Aksi: cari, tambah (pilih mapel), ubah, ekspor, hapus.
+/// dipakai di HalamanAcademic.build (TabBarView children[1])
 class _TabCatatan extends StatefulWidget {
   const _TabCatatan();
 
@@ -434,7 +446,10 @@ class _TabCatatan extends StatefulWidget {
 }
 
 class _TabCatatanState extends State<_TabCatatan> {
-  late final MateriRepository _materiRepo;
+  late final MateriService _materiRepo;
+  late final MapelService _mapelRepo;
+  late final TugasService _tugasRepo;
+  late final LampiranService _lampiranRepo;
   final _kunci = TextEditingController();
 
   List<Materi> _data = [];
@@ -443,7 +458,10 @@ class _TabCatatanState extends State<_TabCatatan> {
   @override
   void initState() {
     super.initState();
-    _materiRepo = MateriRepositoryImpl();
+    _materiRepo = MateriServiceImpl();
+    _mapelRepo = MapelServiceImpl();
+    _tugasRepo = TugasServiceImpl();
+    _lampiranRepo = LampiranServiceImpl();
     _segarkan();
   }
 
@@ -454,13 +472,7 @@ class _TabCatatanState extends State<_TabCatatan> {
   }
 
   /// Memuat ulang daftar materi (catatan) dari database.
-  ///
-  /// Jika [_kunci] tidak kosong, memanggil [MateriRepository.cariKata];
-  /// jika kosong, memanggil [MateriRepository.semua].
-  /// Dipanggil saat initState dan setiap kali teks pencarian berubah.
-  ///
-  /// **Reused in:** [initState], [build.onChanged]
-  /// **Calls:** [MateriRepository.semua], [MateriRepository.cariKata], [setState]
+  /// dipakai di initState, build.onChanged, _tambahCatatan, _ubahCatatan, _hapusCatatan
   Future<void> _segarkan() async {
     setState(() => _muat = true);
     final kata = _kunci.text.trim();
@@ -474,40 +486,161 @@ class _TabCatatanState extends State<_TabCatatan> {
     });
   }
 
-  /// Build tab Catatan: search field + list materi.
-  ///
-  /// Menampilkan: loading, Kosong (empty state), atau ListView Card materi.
-  ///
-  /// **Reused in:** [HalamanAcademic.build] (TabBarView children[1])
-  /// **Calls:** [_KolomCari], [Kosong], [ListView.separated], [Card], [Tanda], [t], [Theme.of]
+  /// Pilih mapel lalu isi dialog; simpan catatan baru + lampiran opsional.
+  /// dipakai di build (FAB onPressed, Kosong onTombol)
+  Future<void> _tambahCatatan() async {
+    final daftar = await _mapelRepo.semua();
+    if (!mounted) return;
+    if (daftar.isEmpty) {
+      pesanGagal(context, t('lib_mapel_kosong'));
+      return;
+    }
+    final mapelId = await _pilihMapelTujuan(context, daftar);
+    if (mapelId == null || !mounted) return;
+
+    final hasil = await tanyaTeks(
+      context,
+      judul: t('dm_tambah_catatan'),
+      labelJudul: t('dm_judul_materi'),
+      labelIsi: t('dm_isi_catatan'),
+      banyakBaris: true,
+      denganLampiran: true,
+    );
+    if (hasil == null) return;
+
+    final idBaru = await _materiRepo.tambah(
+      Materi(
+        mapelId: mapelId,
+        judul: hasil['judul']! as String,
+        isi: hasil['isi'] as String?,
+      ),
+    );
+    if (hasil['lampiran'] != null) {
+      await _lampiranRepo.tambahDariFile(
+        materiId: idBaru,
+        sumber: hasil['lampiran']! as File,
+        tipe: hasil['lampiranTipe']! as String,
+      );
+    }
+    await _segarkan();
+    if (!mounted) return;
+    pesanSukses(context, t('dm_catatan_tersimpan'));
+  }
+
+  /// Ubah judul/isi catatan lewat dialog tanyaTeks.
+  /// dipakai di build (ListTile onTap, menu Ubah)
+  Future<void> _ubahCatatan(Materi m) async {
+    final hasil = await tanyaTeks(
+      context,
+      judul: t('dm_ubah_catatan'),
+      labelJudul: t('dm_judul_materi'),
+      nilaiJudul: m.judul,
+      labelIsi: t('dm_isi_catatan'),
+      nilaiIsi: m.isi,
+      banyakBaris: true,
+      denganLampiran: true,
+    );
+    if (hasil == null) return;
+    final isi = hasil['isi'] as String?;
+    await _materiRepo.ubah(
+      m.copyWith(
+        judul: hasil['judul']! as String,
+        isi: isi,
+        hapusIsi: isi == null,
+      ),
+    );
+    if (hasil['lampiran'] != null) {
+      await _lampiranRepo.tambahDariFile(
+        materiId: m.id!,
+        sumber: hasil['lampiran']! as File,
+        tipe: hasil['lampiranTipe']! as String,
+      );
+    }
+    await _segarkan();
+    if (!mounted) return;
+    pesanSukses(context, t('dm_catatan_diubah'));
+  }
+
+  /// Ekspor satu catatan ke berkas teks.
+  /// dipakai di build (menu Ekspor)
+  Future<void> _eksporCatatan(Materi m) async {
+    final ekspor = LayananEkspor(
+      mapelRepo: _mapelRepo,
+      materiRepo: _materiRepo,
+      tugasRepo: _tugasRepo,
+      lampiranRepo: _lampiranRepo,
+    );
+    try {
+      final f = await ekspor.eksporCatatan(
+        catatan: m,
+        namaMapel: m.namaMapel ?? '',
+      );
+      if (!mounted) return;
+      pesanSukses(context, tp('dm_ekspor_sukses', {'path': f.path}));
+    } catch (e) {
+      if (!mounted) return;
+      pesanGagal(context, tp('dm_ekspor_gagal', {'e': '$e'}));
+    }
+  }
+
+  /// Hapus permanen satu catatan (setelah konfirmasi).
+  /// dipakai di build (menu Hapus)
+  Future<void> _hapusCatatan(Materi m) async {
+    final ok = await konfirmasi(
+      context,
+      judul: tp('dm_hapus_catatan', {'judul': m.judul}),
+      pesan: t('dm_hapus_catatan_pesan'),
+    );
+    if (!ok) return;
+    final hapus = LayananHapus(
+      mapelRepo: _mapelRepo,
+      materiRepo: _materiRepo,
+      tugasRepo: _tugasRepo,
+      lampiranRepo: _lampiranRepo,
+    );
+    await hapus.hapusPermanenMateri(m.id!);
+    await _segarkan();
+  }
+
+  /// Build tab Catatan: kotak cari + daftar materi + FAB tambah.
+  /// dipakai di HalamanAcademic.build (TabBarView children[1])
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _KolomCari(
-          kendali: _kunci,
-          petunjuk: t('ak_cari_catatan'),
-          onUbah: (_) => _segarkan(),
-        ),
-        Expanded(
-          child: _muat
-              ? const Center(child: CircularProgressIndicator())
-              : _data.isEmpty
-                  ? Kosong(
-                      ikon: Icons.description_outlined,
-                      judul: _kunci.text.isEmpty
-                          ? t('ak_kosong_catatan')
-                          : t('ak_tidak_ditemukan'),
-                      pesan: _kunci.text.isEmpty
-                          ? t('ak_kosong_catatan_pesan')
-                          : t('ak_coba_kata'),
-                    )
-                  : ListView.separated(
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
+        children: [
+          _KolomCari(
+            kendali: _kunci,
+            petunjuk: t('ak_cari_catatan'),
+            onUbah: (_) => _segarkan(),
+          ),
+          Expanded(
+            child: _muat
+                ? const Center(child: CircularProgressIndicator())
+                : _data.isEmpty
+                ? Kosong(
+                    ikon: Icons.description_outlined,
+                    judul: _kunci.text.isEmpty
+                        ? t('ak_kosong_catatan')
+                        : t('ak_tidak_ditemukan'),
+                    pesan: _kunci.text.isEmpty
+                        ? t('ak_kosong_catatan_pesan')
+                        : t('ak_coba_kata'),
+                    labelTombol: _kunci.text.isEmpty
+                        ? t('dm_tambah_catatan')
+                        : null,
+                    onTombol: _kunci.text.isEmpty ? _tambahCatatan : null,
+                  )
+                : RefreshIndicator(
+                    onRefresh: _segarkan,
+                    child: ListView.separated(
                       padding: EdgeInsets.fromLTRB(
                         Jarak.j14,
                         Jarak.j10,
                         Jarak.j14,
-                        Jarak.j14 + MediaQuery.viewPaddingOf(context).bottom,
+                        Ukuran.bebasFAB +
+                            MediaQuery.viewPaddingOf(context).bottom,
                       ),
                       itemCount: _data.length,
                       separatorBuilder: (_, _) =>
@@ -515,49 +648,113 @@ class _TabCatatanState extends State<_TabCatatan> {
                       itemBuilder: (_, i) {
                         final m = _data[i];
                         return Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(Jarak.j14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          child: ListTile(
+                            title: Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        m.judul,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleSmall,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    if (m.namaMapel != null)
-                                      Tanda(
-                                        teks: m.namaMapel!,
-                                        warna: Theme.of(context)
-                                            .colorScheme
-                                            .primary,
-                                      ),
-                                  ],
+                                Expanded(
+                                  child: Text(
+                                    m.judul,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall,
+                                  ),
                                 ),
-                                const SizedBox(height: Jarak.j6),
-                                Text(
-                                  (m.isi ?? '').trim().isEmpty
-                                      ? t('ak_belum_isi')
-                                      : m.isi!,
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
+                                if (m.namaMapel != null)
+                                  Tanda(
+                                    teks: m.namaMapel!,
+                                    warna: Theme.of(context)
+                                        .colorScheme
+                                        .primary,
+                                  ),
+                              ],
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: Jarak.j6),
+                              child: Text(
+                                (m.isi ?? '').trim().isEmpty
+                                    ? t('ak_belum_isi')
+                                    : m.isi!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                            trailing: PopupMenuButton<String>(
+                              onSelected: (v) async {
+                                if (v == 'ubah') await _ubahCatatan(m);
+                                if (v == 'ekspor') await _eksporCatatan(m);
+                                if (v == 'hapus') await _hapusCatatan(m);
+                              },
+                              itemBuilder: (_) => [
+                                PopupMenuItem(
+                                  value: 'ubah',
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.edit_outlined,
+                                        size: Ikon.sm,
+                                      ),
+                                      const SizedBox(width: Jarak.j8),
+                                      Flexible(child: Text(t('k_ubah'))),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'ekspor',
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.download_outlined,
+                                        size: Ikon.sm,
+                                      ),
+                                      const SizedBox(width: Jarak.j8),
+                                      Flexible(
+                                        child: Text(t('k_ekspor_tooltip')),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'hapus',
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.delete_outline,
+                                        size: Ikon.sm,
+                                        color: Colors.red,
+                                      ),
+                                      const SizedBox(width: Jarak.j8),
+                                      Flexible(
+                                        child: Text(
+                                          t('k_hapus_tooltip'),
+                                          style: const TextStyle(
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
+                            onTap: () => _ubahCatatan(m),
                           ),
                         );
                       },
                     ),
-        ),
-      ],
+                  ),
+          ),
+        ],
+      ),
+      floatingActionButton: _data.isEmpty && _kunci.text.isEmpty
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _tambahCatatan,
+              icon: const Icon(Icons.add),
+              label: Text(t('dm_tambah_catatan')),
+            ),
     );
   }
 }
@@ -567,7 +764,8 @@ class _TabCatatanState extends State<_TabCatatan> {
 // ─────────────────────────────────────────────────────────────
 
 /// Tab Tugas: menampilkan semua tugas lintas semua mapel.
-/// Mendukung filter status via SegmentedButton (Semua/Belum/Selesai).
+/// Aksi: filter status, tambah (pilih mapel), ubah, hapus, tandai selesai.
+/// dipakai di HalamanAcademic.build (TabBarView children[2])
 class _TabTugas extends StatefulWidget {
   const _TabTugas();
 
@@ -576,26 +774,31 @@ class _TabTugas extends StatefulWidget {
 }
 
 class _TabTugasState extends State<_TabTugas> {
-  late final TugasRepository _repo;
+  late final TugasService _repo;
+  late final MapelService _mapelRepo;
+  late final MateriService _materiRepo;
+  late final LampiranService _lampiranRepo;
 
   List<Tugas> _data = [];
   String? _saring;
   bool _muat = true;
 
+  /// Id tugas yang sedang diproses — mencegah klik ganda saat penyimpanan berjalan.
+  /// dipakai di _tandaiSelesai, itemBuilder
+  final Set<int> _sedangProses = {};
+
   @override
   void initState() {
     super.initState();
-    _repo = TugasRepositoryImpl();
+    _repo = TugasServiceImpl();
+    _mapelRepo = MapelServiceImpl();
+    _materiRepo = MateriServiceImpl();
+    _lampiranRepo = LampiranServiceImpl();
     _segarkan();
   }
 
   /// Memuat ulang daftar tugas dari database dengan filter status opsional.
-  ///
-  /// [_saring] bisa null (semua), 'BELUM', atau 'SELESAI'.
-  /// Dipanggil saat initState dan setiap kali filter berubah.
-  ///
-  /// **Reused in:** [initState], [build.onSelectionChanged]
-  /// **Calls:** [TugasRepository.semua], [setState]
+  /// dipakai di initState, build.onSelectionChanged, _ubahTugas, _hapusTugas
   Future<void> _segarkan() async {
     setState(() => _muat = true);
     final d = await _repo.semua(status: _saring);
@@ -606,52 +809,171 @@ class _TabTugasState extends State<_TabTugas> {
     });
   }
 
-  /// Build tab Tugas: filter SegmentedButton + list tugas.
-  ///
-  /// Menampilkan: loading, Kosong (empty state), atau ListView Card tugas
-  /// dengan IconButton toggle status dan Tanda tenggat relatif.
-  ///
-  /// **Reused in:** [HalamanAcademic.build] (TabBarView children[2])
-  /// **Calls:** [SegmentedButton], [Kosong], [ListView.separated], [Card], [ListTile], [IconButton], [Tanda], [tenggatRelatif], [TugasRepository.ubahStatus], [_segarkan], [t]
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            Jarak.j14,
-            Jarak.j12,
-            Jarak.j14,
-            Jarak.j4,
-          ),
-          child: SegmentedButton<String?>(
-            segments: [
-              ButtonSegment(value: null, label: Text(t('ak_semua'))),
-              ButtonSegment(value: 'BELUM', label: Text(t('ak_belum'))),
-              ButtonSegment(value: 'SELESAI', label: Text(t('ak_selesai'))),
-            ],
-            selected: {_saring},
-            onSelectionChanged: (s) {
-              setState(() => _saring = s.first);
-              _segarkan();
+  /// Pilih mapel lalu isi dialog; simpan tugas baru (dengan tenggat opsional).
+  /// dipakai di build (FAB onPressed, Kosong onTombol)
+  Future<void> _tambahTugas() async {
+    final daftar = await _mapelRepo.semua();
+    if (!mounted) return;
+    if (daftar.isEmpty) {
+      pesanGagal(context, t('lib_mapel_kosong'));
+      return;
+    }
+    final mapelId = await _pilihMapelTujuan(context, daftar);
+    if (mapelId == null || !mounted) return;
+
+    final hasil = await tanyaTeks(
+      context,
+      judul: t('dm_tambah_tugas'),
+      labelJudul: t('dm_judul_tugas'),
+      labelIsi: t('dm_deskripsi_opsional'),
+      banyakBaris: true,
+      denganTenggat: true,
+    );
+    if (hasil == null) return;
+
+    await _repo.tambah(
+      Tugas(
+        mapelId: mapelId,
+        judul: hasil['judul']! as String,
+        deskripsi: hasil['isi'] as String?,
+        tenggat: hasil['tenggat'] as DateTime?,
+      ),
+    );
+    await _segarkan();
+    if (!mounted) return;
+    pesanSukses(context, t('dm_tugas_tersimpan'));
+  }
+
+  /// Ubah judul/deskripsi/tenggat tugas lewat dialog tanyaTeks.
+  /// dipakai di build (ListTile onTap, menu Ubah)
+  Future<void> _ubahTugas(Tugas g) async {
+    final hasil = await tanyaTeks(
+      context,
+      judul: t('dm_ubah_tugas'),
+      labelJudul: t('dm_judul_tugas'),
+      nilaiJudul: g.judul,
+      labelIsi: t('dm_deskripsi_opsional'),
+      nilaiIsi: g.deskripsi,
+      banyakBaris: true,
+      denganTenggat: true,
+      tenggatAwal: g.tenggat,
+    );
+    if (hasil == null) return;
+    final tenggat = hasil['tenggat'] as DateTime?;
+    await _repo.ubah(
+      g.copyWith(
+        judul: hasil['judul']! as String,
+        deskripsi: hasil['isi'] as String?,
+        tenggat: tenggat,
+        hapusTenggat: tenggat == null,
+      ),
+    );
+    await _segarkan();
+    if (!mounted) return;
+    pesanSukses(context, t('dm_tugas_diubah'));
+  }
+
+  /// Hapus permanen satu tugas (setelah konfirmasi).
+  /// dipakai di build (menu Hapus)
+  Future<void> _hapusTugas(Tugas g) async {
+    final ok = await konfirmasi(
+      context,
+      judul: tp('dm_hapus_tugas', {'judul': g.judul}),
+      pesan: t('dm_hapus_tugas_pesan'),
+    );
+    if (!ok) return;
+    final hapus = LayananHapus(
+      mapelRepo: _mapelRepo,
+      materiRepo: _materiRepo,
+      tugasRepo: _repo,
+      lampiranRepo: _lampiranRepo,
+    );
+    await hapus.hapusPermanenTugas(g.id!);
+    await _segarkan();
+  }
+
+  /// Ubah status tugas dari daftar: BELUM → SELESAI, atau sebaliknya.
+  /// Tugas langsung dikeluarkan dari daftar yang sedang tampil supaya tidak
+  /// bisa diklik berulang dan daftar tidak melompat. Saat ditandai selesai,
+  /// sediakan "Urungkan" lewat SnackBar.
+  /// dipakai di build (Checkbox onChanged)
+  Future<void> _tandaiSelesai(Tugas g) async {
+    final id = g.id;
+    if (id == null || !_sedangProses.add(id)) return;
+    final jadiSelesai = !g.selesai;
+    try {
+      await _repo.ubahStatus(id, jadiSelesai ? 'SELESAI' : 'BELUM');
+      if (!mounted) return;
+      setState(() {
+        _data.removeWhere((x) => x.id == id);
+      });
+      if (!jadiSelesai) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(tp('home_selesai_pesan', {'judul': g.judul})),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: t('home_urungkan'),
+            onPressed: () async {
+              await _repo.ubahStatus(id, 'BELUM');
+              await _segarkan();
             },
           ),
         ),
-        Expanded(
-          child: _muat
-              ? const Center(child: CircularProgressIndicator())
-              : _data.isEmpty
-                  ? Kosong(
-                      ikon: Icons.checklist_outlined,
-                      judul: t('ak_tidak_ada_tugas'),
-                      pesan: t('ak_tidak_ada_tugas_pesan'),
-                    )
-                  : ListView.separated(
+      );
+    } finally {
+      _sedangProses.remove(id);
+    }
+  }
+
+  /// Build tab Tugas: SegmentedButton filter + daftar tugas + FAB tambah.
+  /// dipakai di HalamanAcademic.build (TabBarView children[2])
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              Jarak.j14,
+              Jarak.j12,
+              Jarak.j14,
+              Jarak.j4,
+            ),
+            child: SegmentedButton<String?>(
+              segments: [
+                ButtonSegment(value: null, label: Text(t('ak_semua'))),
+                ButtonSegment(value: 'BELUM', label: Text(t('ak_belum'))),
+                ButtonSegment(value: 'SELESAI', label: Text(t('ak_selesai'))),
+              ],
+              selected: {_saring},
+              onSelectionChanged: (s) {
+                setState(() => _saring = s.first);
+                _segarkan();
+              },
+            ),
+          ),
+          Expanded(
+            child: _muat
+                ? const Center(child: CircularProgressIndicator())
+                : _data.isEmpty
+                ? Kosong(
+                    ikon: Icons.checklist_outlined,
+                    judul: t('ak_tidak_ada_tugas'),
+                    pesan: t('ak_tidak_ada_tugas_pesan'),
+                    labelTombol: t('dm_tambah_tugas'),
+                    onTombol: _tambahTugas,
+                  )
+                : RefreshIndicator(
+                    onRefresh: _segarkan,
+                    child: ListView.separated(
                       padding: EdgeInsets.fromLTRB(
                         Jarak.j14,
                         Jarak.j10,
                         Jarak.j14,
-                        Jarak.j14 + MediaQuery.viewPaddingOf(context).bottom,
+                        Ukuran.bebasFAB +
+                            MediaQuery.viewPaddingOf(context).bottom,
                       ),
                       itemCount: _data.length,
                       separatorBuilder: (_, _) =>
@@ -661,30 +983,22 @@ class _TabTugasState extends State<_TabTugas> {
                         final selesai = g.selesai;
                         final lewat = g.lewatTenggat;
                         final skema = Theme.of(context).colorScheme;
+                        final diproses =
+                            g.id != null && _sedangProses.contains(g.id);
 
                         return Card(
                           child: ListTile(
-                            leading: IconButton(
-                              tooltip: selesai
-                                  ? t('dm_tandai_belum')
-                                  : t('dm_tandai_selesai'),
-                              icon: Icon(
-                                selesai
-                                    ? Icons.check_circle
-                                    : Icons.radio_button_unchecked,
-                                color: selesai ? skema.primary : null,
-                              ),
-                              onPressed: () async {
-                                await _repo.ubahStatus(
-                                  g.id!,
-                                  selesai ? 'BELUM' : 'SELESAI',
-                                );
-                                await _segarkan();
-                              },
+                            leading: Checkbox(
+                              value: selesai,
+                              onChanged: diproses
+                                  ? null
+                                  : (v) => _tandaiSelesai(g),
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
                             ),
                             title: Text(
                               g.judul,
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 decoration: selesai
@@ -697,22 +1011,79 @@ class _TabTugasState extends State<_TabTugas> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            trailing: Tanda(
-                              teks: selesai
-                                  ? t('ak_selesai')
-                                  : tenggatRelatif(g.tenggat),
-                              warna: selesai
-                                  ? skema.outline
-                                  : lewat
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Tanda(
+                                  teks: selesai
+                                      ? t('ak_selesai')
+                                      : tenggatRelatif(g.tenggat),
+                                  warna: selesai
+                                      ? skema.outline
+                                      : lewat
                                       ? skema.error
                                       : skema.primary,
+                                ),
+                                PopupMenuButton<String>(
+                                  onSelected: (v) async {
+                                    if (v == 'ubah') await _ubahTugas(g);
+                                    if (v == 'hapus') await _hapusTugas(g);
+                                  },
+                                  itemBuilder: (_) => [
+                                    PopupMenuItem(
+                                      value: 'ubah',
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.edit_outlined,
+                                            size: Ikon.sm,
+                                          ),
+                                          const SizedBox(width: Jarak.j8),
+                                          Flexible(child: Text(t('k_ubah'))),
+                                        ],
+                                      ),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'hapus',
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.delete_outline,
+                                            size: Ikon.sm,
+                                            color: Colors.red,
+                                          ),
+                                          const SizedBox(width: Jarak.j8),
+                                          Flexible(
+                                            child: Text(
+                                              t('k_hapus_tooltip'),
+                                              style: const TextStyle(
+                                                color: Colors.red,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
+                            onTap: () => _ubahTugas(g),
                           ),
                         );
                       },
                     ),
-        ),
-      ],
+                  ),
+          ),
+        ],
+      ),
+      floatingActionButton: _data.isEmpty
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _tambahTugas,
+              icon: const Icon(Icons.add),
+              label: Text(t('dm_tambah_tugas')),
+            ),
     );
   }
 }

@@ -1,96 +1,63 @@
 import 'package:sqflite/sqflite.dart';
 
 /// Skema database Syllabind.
-///
-/// Sumber kebenaran: `SPESIFIKASI-FINAL.md` §3.
-/// 5 tabel:
-///   mata_pelajaran       — mapel yang diampu siswa
-///   materi_pembelajaran  — materi/catatan di dalam mapel (kolom `isi` = catatan)
-///   tugas                — tugas di dalam mapel (boleh punya tenggat & status)
-///   lampiran             — SATU tabel untuk Gambar + File, dibedakan kolom `tipe`
-///   pengaturan           — preferensi aplikasi
-///
-/// Aturan hapus (SPESIFIKASI-FINAL.md §4):
-///   - Mata Pelajaran  : soft delete (`deleted_at`), CASCADE saat purge
-///   - Materi          : soft delete, CASCADE ke lampiran saat purge
-///   - Tugas           : soft delete
-///   - Lampiran        : hard delete + hapus file fisik
-///
-/// Catatan: tabel memakai `deleted_at` (bukan `is_deleted`) supaya waktu
-/// penghapusan tetap terekam dan bisa dipakai untuk pembersihan otomatis.
-///
-/// **Reused in:** [Db.init] (database initialization), [test/data_test.dart] (schema verification)
-/// **Calls:** sqflite [Database.execute], [Database.insert]
+/// Sumber kebenaran: SPESIFIKASI-FINAL.md §3. 5 tabel: mata_pelajaran, materi_pembelajaran, tugas, lampiran, pengaturan.
+/// Aturan hapus: Mapel soft delete + CASCADE purge, Materi soft delete + CASCADE lampiran, Tugas soft delete, Lampiran hard delete + hapus file fisik.
+/// Pakai deleted_at (bukan is_deleted) biar waktu hapus terekam & bisa pembersihan otomatis.
+/// dipakai di [Db.init], [test/data_test.dart]
+/// panggil [Database.execute], [Database.insert]
 class SkemaDb {
   SkemaDb._();
 
   /// Nama file database SQLite.
-  ///
-  /// **Reused in:** [Db.database] (path construction)
+  /// dipakai di [Db.database]
   static const String namaFile = 'syllabind.db';
 
   /// Versi skema database. Naikkan saat migrasi.
-  ///
-  /// **Reused in:** [Db.init] (onUpgrade callback)
+  /// dipakai di [Db.init]
   static const int versi = 1;
 
   /// Nama tabel mata pelajaran.
-  ///
-  /// **Reused in:** [RepoMapel], [RepoMateri], [RepoTugas], [LayananHapus], [SkemaDb.buat]
+  /// dipakai di [RepoMapel], [RepoMateri], [RepoTugas], [LayananHapus], [SkemaDb.buat]
   static const String tabelMapel = 'mata_pelajaran';
 
   /// Nama tabel materi pembelajaran.
-  ///
-  /// **Reused in:** [RepoMateri], [RepoLampiran], [LayananHapus], [SkemaDb.buat]
+  /// dipakai di [RepoMateri], [RepoLampiran], [LayananHapus], [SkemaDb.buat]
   static const String tabelMateri = 'materi_pembelajaran';
 
   /// Nama tabel tugas.
-  ///
-  /// **Reused in:** [RepoTugas], [LayananHapus], [SkemaDb.buat]
+  /// dipakai di [RepoTugas], [LayananHapus], [SkemaDb.buat]
   static const String tabelTugas = 'tugas';
 
   /// Nama tabel lampiran (gabungan gambar + file).
-  ///
-  /// **Reused in:** [RepoLampiran], [LayananHapus], [SkemaDb.buat]
+  /// dipakai di [RepoLampiran], [LayananHapus], [SkemaDb.buat]
   static const String tabelLampiran = 'lampiran';
 
   /// Nama tabel pengaturan (key-value).
-  ///
-  /// **Reused in:** [RepoPengaturan], [SkemaDb.buat]
+  /// dipakai di [RepoPengaturan], [SkemaDb.buat]
   static const String tabelPengaturan = 'pengaturan';
 
-  /// Tipe lampiran: Gambar. Disimpan sebagai teks supaya mudah dibaca di DB Browser.
-  ///
-  /// **Reused in:** [RepoLampiran.tambahDariFile], [RepoLampiran.semua], [Lampiran.tipe]
+  /// Tipe lampiran: Gambar. Teks biar mudah dibaca di DB Browser.
+  /// dipakai di [RepoLampiran.tambahDariFile], [RepoLampiran.semua], [Lampiran.tipe]
   static const String tipeGambar = 'GAMBAR';
 
-  /// Tipe lampiran: File. Disimpan sebagai teks supaya mudah dibaca di DB Browser.
-  ///
-  /// **Reused in:** [RepoLampiran.tambahDariFile], [RepoLampiran.semua], [Lampiran.tipe]
+  /// Tipe lampiran: File. Teks biar mudah dibaca di DB Browser.
+  /// dipakai di [RepoLampiran.tambahDariFile], [RepoLampiran.semua], [Lampiran.tipe]
   static const String tipeFile = 'FILE';
 
   /// Status tugas: Belum dikerjakan.
-  ///
-  /// **Reused in:** [RepoTugas.tambah], [RepoTugas.toggleStatus], [Tugas.status], [SkemaDb.buat]
+  /// dipakai di [RepoTugas.tambah], [RepoTugas.toggleStatus], [Tugas.status], [SkemaDb.buat]
   static const String statusBelum = 'BELUM';
 
   /// Status tugas: Selesai.
-  ///
-  /// **Reused in:** [RepoTugas.toggleStatus], [Tugas.status], [SkemaDb.buat]
+  /// dipakai di [RepoTugas.toggleStatus], [Tugas.status], [SkemaDb.buat]
   static const String statusSelesai = 'SELESAI';
 
   /// Membuat seluruh skema database: 5 tabel + indeks + pengaturan awal.
-  ///
-  /// Dipanggil sekali saat database pertama kali dibuat via [Db.init].
-  /// Menggunakan `ON DELETE CASCADE` pada FK untuk memastikan konsistensi
-  /// referensial saat Mapel/Materi dihapus permanen (purge).
-  ///
-  /// Parameter:
-  ///   - [db]: Instance database sqflite yang baru dibuat.
-  ///   - [versi]: Versi skema (harus sama dengan [SkemaDb.versi]).
-  ///
-  /// **Reused in:** [Db.init] (onCreate callback)
-  /// **Calls:** [Database.execute] (5× CREATE TABLE + 4× CREATE INDEX), [Database.insert] (4× pengaturan awal)
+  /// Dipanggil sekali saat database pertama kali dibuat via Db.init.
+  /// Pakai ON DELETE CASCADE pada FK biar konsisten saat Mapel/Materi dihapus permanen (purge).
+  /// dipakai di [Db.init]
+  /// panggil [Database.execute] (5× CREATE TABLE + 4× CREATE INDEX), [Database.insert] (4× pengaturan awal)
   static Future<void> buat(Database db, int versi) async {
     await db.execute('''
       CREATE TABLE $tabelMapel (

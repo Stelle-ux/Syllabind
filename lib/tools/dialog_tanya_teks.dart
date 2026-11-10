@@ -12,8 +12,7 @@ import 'package:syllabind/tools/tokens.dart';
 import 'package:syllabind/tools/dialog_mapel.dart';
 
 /// Dialog isian teks serbaguna (judul / isi / opsional tenggat / warna / lampiran).
-///
-/// Digunakan untuk: tambah/ubah Mapel, Materi, Tugas — satu dialog untuk semua.
+/// dipakai di dialog_mapel.tanyaMapel, HalamanDetailMapel._TabMateri._tambahMateri, HalamanDetailMapel._TabMateri._ubahMateri, HalamanDetailMapel._TabTugasMapel._tambahTugas, HalamanDetailMapel._TabTugasMapel._ubahTugas
 Future<Map<String, Object?>?> tanyaTeks(
   BuildContext context, {
   required String judul,

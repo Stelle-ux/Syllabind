@@ -104,7 +104,7 @@ void main() {
   });
 
   tearDownAll(() async {
-    LampiranRepositoryImpl.folderUji = null;
+      LampiranServiceImpl.folderUji = null;
     LayananEkspor.folderUji = null;
     await Db.tutup();
     print('');
@@ -117,7 +117,7 @@ void main() {
     await Db.reset();
     akarUji = Directory(p.join(Directory.current.path, 'build', 'uji_klik'));
     await akarUji.create(recursive: true);
-    LampiranRepositoryImpl.folderUji = akarUji;
+      LampiranServiceImpl.folderUji = akarUji;
     // Tanpa ini ekspor menulis ke folder dokumen aplikasi yang tak ada di VM.
     LayananEkspor.folderUji = akarUji;
     Bahasa.set(Bahasa.id);
@@ -227,14 +227,14 @@ void main() {
   }
 
   Future<int> semai({bool denganTugas = true, bool lewat = false}) async {
-    final idMapel = await MapelRepositoryImpl().tambah(
+      final idMapel = await MapelServiceImpl().tambah(
       Mapel(nama: 'Fisika', deskripsi: 'Bab gerak', warna: '#2F6F6B'),
     );
-    final idMateri = await MateriRepositoryImpl().tambah(
+      final idMateri = await MateriServiceImpl().tambah(
       Materi(mapelId: idMapel, judul: 'Catatan Gerak', isi: 'Isi catatan uji'),
     );
     if (denganTugas) {
-      await TugasRepositoryImpl().tambah(
+        await TugasServiceImpl().tambah(
         Tugas(
           mapelId: idMapel,
           judul: 'Tugas Laporan',
@@ -247,7 +247,7 @@ void main() {
     }
     final sumber = File(p.join(akarUji.path, 'laporan.pdf'));
     await sumber.writeAsString('pdf palsu untuk audit');
-    await LampiranRepositoryImpl().tambahDariFile(
+      await LampiranServiceImpl().tambahDariFile(
       materiId: idMateri,
       sumber: sumber,
       tipe: Lampiran.tipeFile,
@@ -346,7 +346,7 @@ void main() {
         final tombol = find.text(t('dm_tandai_selesai'));
         pastikan(ada(tombol), 'tombol "Tandai selesai" harus ada');
         await tekan(tester, tombol, apa: 'tombol Tandai selesai', jeda: 700);
-        final t2 = await TugasRepositoryImpl().semua();
+        final t2 = await TugasServiceImpl().semua();
         pastikan(t2.first.status == 'SELESAI', 'status harus jadi SELESAI');
       }, bukti: () => 'status tugas jadi SELESAI di database');
 
@@ -355,7 +355,7 @@ void main() {
         await jalankan(tester, 'B4 SnackBar → ${t('home_urungkan')}', () async {
           await tekan(tester, find.text(t('home_urungkan')),
               apa: 'Urungkan', jeda: 700);
-          final t2 = await TugasRepositoryImpl().semua();
+                  final t2 = await TugasServiceImpl().semua();
           pastikan(t2.first.status == 'BELUM', 'status harus kembali BELUM');
         }, bukti: () => 'status tugas kembali BELUM di database');
       } else {
@@ -405,17 +405,17 @@ void main() {
             diDialog(find.byType(TextFormField)).first, 'Biologi');
         await tester.pump();
         await tekan(tester, find.text(t('simpan')), apa: 'Simpan', jeda: 700);
-        final daftar = await MapelRepositoryImpl().semua();
+              final daftar = await MapelServiceImpl().semua();
         pastikan(daftar.any((m) => m.nama == 'Biologi'),
             'mapel baru harus tersimpan');
       }, bukti: () => 'mapel "Biologi" tersimpan di database');
 
       // C3 — batal
       await jalankan(tester, 'C3 dialog tambah → Batal', () async {
-        final sebelum = (await MapelRepositoryImpl().semua()).length;
+              final sebelum = (await MapelServiceImpl().semua()).length;
         await tekan(tester, find.byType(FloatingActionButton), apa: 'FAB');
         await tekan(tester, find.text(t('batal')), apa: 'tombol Batal');
-        final sesudah = (await MapelRepositoryImpl().semua()).length;
+              final sesudah = (await MapelServiceImpl().semua()).length;
         pastikan(sesudah == sebelum, 'jumlah mapel tidak boleh berubah');
       }, bukti: () => 'jumlah mapel tidak berubah');
 
@@ -466,7 +466,7 @@ void main() {
             aktif ? 'onPressed != null (benar)' : 'masih terkunci');
 
         await tekan(tester, tombol, apa: 'tombol Hapus di dialog', jeda: 700);
-        final sisa = await MapelRepositoryImpl().semua();
+                final sisa = await MapelServiceImpl().semua();
         pastikan(sisa.isEmpty, 'semua mapel harus terhapus lunak');
       }, bukti: () => 'semua mapel pindah ke Sampah (daftar utama kosong)');
 
@@ -500,7 +500,7 @@ void main() {
         idMapel = await semai();
       });
       await jalankan(tester, 'D0 muat layar Detail Mapel', () async {
-        final m = await MapelRepositoryImpl().cari(idMapel);
+                final m = await MapelServiceImpl().cari(idMapel);
         await buka(tester, HalamanDetailMapel(mapel: m!));
       }, bukti: () => 'layar Detail Mapel dimuat');
 
@@ -534,7 +534,7 @@ void main() {
             diDialog(find.byType(TextFormField)).first, 'Catatan Baru');
         await tester.pump();
         await tekan(tester, find.text(t('simpan')), apa: 'Simpan', jeda: 700);
-        final materi = await MateriRepositoryImpl().perMapel(idMapel);
+        final materi = await MateriServiceImpl().perMapel(idMapel);
         pastikan(materi.any((x) => x.judul == 'Catatan Baru'),
             'catatan baru harus tersimpan');
       }, bukti: () => 'catatan "Catatan Baru" tersimpan');
@@ -574,7 +574,7 @@ void main() {
       // D6 — popup catatan → Hapus
       await jalankan(tester, 'D6 popup catatan → "${t('k_hapus_tooltip')}"',
           () async {
-        final sebelum = (await MateriRepositoryImpl().perMapel(idMapel)).length;
+              final sebelum = (await MateriServiceImpl().perMapel(idMapel)).length;
         await tekan(tester, find.byType(PopupMenuButton<String>).first,
             apa: 'popup catatan');
         final item = find.text(t('k_hapus_tooltip'));
@@ -583,7 +583,7 @@ void main() {
         final konfirmasi = find.widgetWithText(FilledButton, t('hapus'));
         pastikan(ada(konfirmasi), 'dialog konfirmasi harus muncul');
         await tekan(tester, konfirmasi, apa: 'Hapus', jeda: 700);
-        final sesudah = (await MateriRepositoryImpl().perMapel(idMapel)).length;
+              final sesudah = (await MateriServiceImpl().perMapel(idMapel)).length;
         pastikan(sesudah == sebelum - 1, 'satu catatan harus terhapus');
       }, bukti: () => 'satu catatan terhapus dari database');
 
@@ -605,7 +605,7 @@ void main() {
             diDialog(find.byType(TextFormField)).first, 'Tugas Baru');
         await tester.pump();
         await tekan(tester, find.text(t('simpan')), apa: 'Simpan', jeda: 700);
-        final tugas = await TugasRepositoryImpl().perMapel(idMapel);
+              final tugas = await TugasServiceImpl().perMapel(idMapel);
         pastikan(tugas.any((x) => x.judul == 'Tugas Baru'),
             'tugas baru harus tersimpan');
       }, bukti: () => 'tugas "Tugas Baru" tersimpan');
@@ -651,7 +651,7 @@ void main() {
         await tungguHitungMundur(tester);
         await tekan(tester, diDialog(find.byType(FilledButton)),
             apa: 'Hapus', jeda: 700);
-        final sampah = await MapelRepositoryImpl().isiSampah();
+        final sampah = await MapelServiceImpl().isiSampah();
         pastikan(sampah.any((x) => x.id == idMapel), 'mapel harus ada di Sampah');
       }, bukti: () => 'mapel pindah ke Sampah setelah hitung mundur');
     });
@@ -734,7 +734,7 @@ void main() {
             diDialog(find.byType(TextField)).first, 'namabaru.pdf');
         await tester.pump();
         await tekan(tester, find.text(t('simpan')), apa: 'Simpan', jeda: 700);
-        final semua = await LampiranRepositoryImpl().semua();
+              final semua = await LampiranServiceImpl().semua();
         pastikan(semua.any((l) => l.namaFile == 'namabaru.pdf'),
             'nama berkas harus berubah di database');
       }, bukti: () => 'nama berkas di database berubah jadi namabaru.pdf');
@@ -750,7 +750,7 @@ void main() {
         final konfirmasi = find.widgetWithText(FilledButton, t('hapus'));
         pastikan(ada(konfirmasi), 'dialog konfirmasi harus muncul');
         await tekan(tester, konfirmasi, apa: 'Hapus', jeda: 700);
-        final sisa = await LampiranRepositoryImpl().semua();
+              final sisa = await LampiranServiceImpl().semua();
         pastikan(sisa.isEmpty, 'berkas harus terhapus dari database');
       }, bukti: () => 'berkas terhapus dari database');
 
@@ -791,7 +791,7 @@ void main() {
       ]) {
         await jalankan(tester, 'F radio tema → $label', () async {
           await tekan(tester, find.text(label), apa: 'radio "$label"', jeda: 700);
-          final mode = await PengaturanRepositoryImpl().tema();
+          final mode = await PengaturanServiceImpl().tema();
           pastikan(mode == nilai, 'tema tersimpan harus "$nilai", dapat "$mode"');
         }, bukti: () => 'pengaturan tema tersimpan = $nilai');
       }
@@ -804,7 +804,7 @@ void main() {
         final pilihan = find.text(t('set_bahasa_en'));
         pastikan(ada(pilihan), 'menu bahasa harus terbuka');
         await tekan(tester, pilihan.last, apa: 'pilihan Inggris', jeda: 700);
-        final b = await PengaturanRepositoryImpl().bahasa();
+        final b = await PengaturanServiceImpl().bahasa();
         pastikan(b == 'en', 'bahasa tersimpan harus en, dapat $b');
       }, bukti: () => 'bahasa tersimpan = en');
     });

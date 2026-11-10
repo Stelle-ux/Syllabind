@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:syllabind/function/lampiran.dart';
 
-/// Contract untuk repository Lampiran (Attachments).
-abstract class LampiranRepository {
+/// Contract untuk service Lampiran (Attachments).
+abstract class LampiranService {
   Future<int> tambahDariFile({
     required int materiId,
     required File sumber,

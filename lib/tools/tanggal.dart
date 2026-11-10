@@ -1,6 +1,7 @@
 import 'package:syllabind/tools/bahasa.dart';
 
 /// Format tanggal pendek: "30 Okt 2026" (ID) / "30 Oct 2026" (EN).
+/// dipakai di HalamanHome._buildTugasItem, HalamanDetailMapel._TabTugasMapel._buildItem, HalamanDetailMapel._TabMateri._buildItem, HalamanPenyimpanan._buildLampiranItem, dialog_tanya_teks.tanyaTeks
 String tanggalPendek(DateTime d) {
   const bulanId = [
     'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
@@ -16,6 +17,7 @@ String tanggalPendek(DateTime d) {
 }
 
 /// Format tenggat relatif: "Hari ini" / "Besok" / "3 hari lagi" / "Lewat 2 hari".
+/// dipakai di HalamanHome._buildTugasItem, HalamanDetailMapel._TabTugasMapel._buildItem, HalamanAcademic._TabTugas._buildItem, dialog_tanya_teks.tanyaTeks
 String tenggatRelatif(DateTime? d) {
   if (d == null) return t('k_tanpa_tenggat');
   final kini = DateTime.now();

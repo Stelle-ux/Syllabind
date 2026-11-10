@@ -7,20 +7,20 @@ import 'package:syllabind/function/materi.dart';
 import 'package:syllabind/function/tugas.dart';
 import 'package:syllabind/function/lampiran.dart';
 import 'package:syllabind/function/ringkasan_tugas.dart';
-import 'package:syllabind/services/mapel_repository.dart';
-import 'package:syllabind/services/materi_repository.dart';
-import 'package:syllabind/services/tugas_repository.dart';
-import 'package:syllabind/services/lampiran_repository.dart';
+import 'package:syllabind/services/mapel_service.dart';
+import 'package:syllabind/services/materi_service.dart';
+import 'package:syllabind/services/tugas_service.dart';
+import 'package:syllabind/services/lampiran_service.dart';
 
 /// Ekspor data ke `.txt` (satu-satunya format ekspor).
 ///
 /// Berguna saat presentasi UKOM: bukti bahwa data benar-benar tersimpan dan
 /// bisa dikeluarkan dari aplikasi. Format teks sederhana, readable tanpa tools khusus.
 class ExportService {
-  final MapelRepository _mapelRepo;
-  final MateriRepository _materiRepo;
-  final TugasRepository _tugasRepo;
-  final LampiranRepository _lampiranRepo;
+  final MapelService _mapelRepo;
+  final MateriService _materiRepo;
+  final TugasService _tugasRepo;
+  final LampiranService _lampiranRepo;
 
   /// Folder dasar ekspor; `null` = pakai folder dokumen aplikasi.
   ///
@@ -29,10 +29,10 @@ class ExportService {
   static Directory? folderUji;
 
   ExportService({
-    required MapelRepository mapelRepo,
-    required MateriRepository materiRepo,
-    required TugasRepository tugasRepo,
-    required LampiranRepository lampiranRepo,
+    required MapelService mapelRepo,
+    required MateriService materiRepo,
+    required TugasService tugasRepo,
+    required LampiranService lampiranRepo,
   })  : _mapelRepo = mapelRepo,
         _materiRepo = materiRepo,
         _tugasRepo = tugasRepo,

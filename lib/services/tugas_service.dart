@@ -1,8 +1,8 @@
 import 'package:syllabind/function/tugas.dart';
 import 'package:syllabind/function/ringkasan_tugas.dart';
 
-/// Contract untuk repository Tugas.
-abstract class TugasRepository {
+/// Contract untuk service Tugas.
+abstract class TugasService {
   Future<int> tambah(Tugas tugas);
   Future<List<Tugas>> perMapel(int mapelId, {bool termasukSampah = false});
   Future<List<Tugas>> semua({String? status});

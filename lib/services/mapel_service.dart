@@ -1,9 +1,7 @@
 import 'package:syllabind/function/mapel.dart';
 
-/// Contract untuk repository Mata Pelajaran.
-///
-/// Implementasi konkret: [MapelRepositoryImpl] di services.
-abstract class MapelRepository {
+/// Contract untuk service Mata Pelajaran.
+abstract class MapelService {
   /// Menambah mata pelajaran baru. Returns id baris baru.
   Future<int> tambah(Mapel mapel);
 

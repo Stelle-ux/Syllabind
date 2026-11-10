@@ -6,12 +6,12 @@ import 'package:syllabind/function/mapel.dart';
 import 'package:syllabind/function/materi.dart';
 import 'package:syllabind/function/ringkasan_tugas.dart';
 import 'package:syllabind/function/tugas.dart';
-import 'package:syllabind/services/mapel_repository_impl.dart';
-import 'package:syllabind/services/materi_repository_impl.dart';
-import 'package:syllabind/services/tugas_repository_impl.dart';
-import 'package:syllabind/services/mapel_repository.dart';
-import 'package:syllabind/services/materi_repository.dart';
-import 'package:syllabind/services/tugas_repository.dart';
+import 'package:syllabind/services/mapel_service_impl.dart';
+import 'package:syllabind/services/materi_service_impl.dart';
+import 'package:syllabind/services/tugas_service_impl.dart';
+import 'package:syllabind/services/mapel_service.dart';
+import 'package:syllabind/services/materi_service.dart';
+import 'package:syllabind/services/tugas_service.dart';
 import 'package:syllabind/screen/detail_mapel_page.dart';
 import 'package:syllabind/tools/bahasa.dart';
 import 'package:syllabind/tools/tema.dart';
@@ -20,38 +20,18 @@ import 'package:syllabind/tools/tanggal.dart';
 import 'package:syllabind/tools/kartu_mapel.dart';
 import 'package:syllabind/tools/kosong.dart';
 import 'package:syllabind/tools/tanda.dart';
+import 'package:syllabind/tools/kosong.dart';
+import 'package:syllabind/tools/tanda.dart';
 
 /// Halaman 1 — Home / Hari Ini.
-///
-/// Susunan mengikuti `syllabind-wireframe/ukom_mobile_layout_wireframe.drawio`
-/// (layar 1 "UKOM Mobile Dashboard"), dengan dua blok tambahan yang diminta
-/// `SPESIFIKASI-FINAL.md` §2.1 poin 9 (lewat tenggat + tugas bertenggat dekat):
-///
-///   1. Sapaan + tanggal          (wireframe: "Alex / Today, Oct 24")
-///   2. Kotak cari                (wireframe: "[Q] Search...")
-///   3. Tiga angka ringkasan      (tambahan — sudah sesuai spesifikasi)
-///   4. Fokus hari ini            (wireframe: "Today's Focus")
-///   5. Lewat tenggat             (tambahan — spesifikasi §2.1 poin 9)
-///   6. Tenggat terdekat          (wireframe: "Upcoming", 2 kolom)
-///   7. Mata pelajaran 2×2        (wireframe: "Subjects" + View all)
-///   8. Catatan terbaru           (wireframe: "Recent Notes" + View all)
-///
-/// Semua isi berasal dari repository — tidak ada data yang ditulis di layar.
-///
-/// **Reused in:** [main.dart] (RumahAplikasi halaman[0])
-/// **Calls:** [MapelRepository], [TugasRepository], [MateriRepository], [Kosong], [Tanda], [HalamanDetailMapel], [_kepala], [_duaKolom], [_kartuFokus], [_kartuTugas], [_kartuMapel], [_barisTugas], [_angka], [t], [tp], [tanggalPendek], [tenggatRelatif]
+/// dipakai di main.dart:RumahAplikasi halaman[0]
 class HalamanHome extends StatefulWidget {
-  /// Waktu yang dipakai untuk sapaan dan tanggal header; `null` = waktu perangkat.
-  ///
-  /// Dipakai tes supaya tangkapan layar Golden Home tidak gagal hanya karena
-  /// waktu berjalan. Dua hal ikut bergerak bersama waktu:
-  ///   1. sapaan (pagi → siang → sore → malam), dan
-  ///   2. tanggal header (berubah setiap pergantian hari).
-  /// Memaketkan jam saja tidak cukup — golden tetap gagal esok hari.
-  /// `addTearDown` di tes mengembalikannya ke `null` setelah selesai.
+  /// Waktu acuan untuk sapaan dan tanggal header; null = waktu perangkat.
+  /// dipakai di tes golden agar tidak gagal karena waktu berjalan
   static DateTime? waktuUji;
 
-  /// Callback untuk navigasi ke tab Academic saat belum ada mapel.
+  /// Callback navigasi ke tab Academic saat belum ada mapel.
+  /// dipakai di _buildKosongTotal, _kepala (onLihatSemua)
   final VoidCallback onBukaAcademic;
 
   const HalamanHome({super.key, required this.onBukaAcademic});
@@ -61,26 +41,24 @@ class HalamanHome extends StatefulWidget {
 }
 
 class _HalamanHomeState extends State<HalamanHome> {
-  late final MapelRepository _mapelRepo;
-  late final TugasRepository _tugasRepo;
-  late final MateriRepository _materiRepo;
+  late final MapelService _mapelRepo;
+  late final TugasService _tugasRepo;
+  late final MateriService _materiRepo;
 
   /// Pengendali kotak cari. Perlu di-dispose agar tidak bocor.
+  /// dipakai di build (TextField), dispose
   final _kendaliCari = TextEditingController();
 
   /// Kata kunci pencarian aktif (sudah dipangkas & dihuruf-kecilkan).
+  /// dipakai di _saringTugas, _saringCatatan, _saringMapel, _hasilCari
   String _kata = '';
 
   RingkasanTugas? _ringkasan;
   List<Tugas> _dekat = [];
 
-  /// Tugas yang baru saja ditandai selesai dari layar ini.
-  ///
-  /// Penandaan bersifat optimistis — nilainya langsung berubah saat diketuk,
-  /// tanpa menunggu halaman dibangun ulang. Id di sini yang membuat baris
-  /// tetap tampil (tercoret) sampai penyegaran selesai, sehingga pengguna
-  /// punya kesempatan menekan **Urungkan**.
-  final Set<int> _pilihanSelesai = {};
+  /// Id tugas yang sedang diproses — mencegah klik ganda saat penyimpanan berjalan.
+  /// dipakai di _tandai
+  final Set<int> _sedangProses = {};
   List<Tugas> _lewat = [];
   List<Materi> _catatan = [];
   List<Mapel> _mapel = [];
@@ -90,9 +68,9 @@ class _HalamanHomeState extends State<HalamanHome> {
   @override
   void initState() {
     super.initState();
-    _mapelRepo = MapelRepositoryImpl();
-    _tugasRepo = TugasRepositoryImpl();
-    _materiRepo = MateriRepositoryImpl();
+      _mapelRepo = MapelServiceImpl();
+      _tugasRepo = TugasServiceImpl();
+      _materiRepo = MateriServiceImpl();
     _segarkan();
   }
 
@@ -102,14 +80,8 @@ class _HalamanHomeState extends State<HalamanHome> {
     super.dispose();
   }
 
-  /// Memuat ulang semua data dari repository.
-  ///
-  /// Dipanggil di initState, pull-to-refresh, dan setelah operasi CRUD.
-  /// Query berurutan: ringkasan, tenggat terdekat, lewat tenggat, jumlah mapel,
-  /// daftar mapel, catatan.
-  ///
-  /// **Reused in:** [initState], [_tandai] (saat urungkan), [build] (RefreshIndicator.onRefresh)
-  /// **Calls:** [TugasRepository.ringkasan], [TugasRepository.tenggatTerdekat], [TugasRepository.lewatTenggat], [MapelRepository.jumlah], [MapelRepository.semua], [MateriRepository.semua], [setState]
+  /// Memuat ulang semua data dari service.
+  /// dipakai di initState, _tandai (urungkan), build (RefreshIndicator.onRefresh)
   Future<void> _segarkan() async {
     setState(() => _muat = true);
     final r = await _tugasRepo.ringkasan();
@@ -126,91 +98,80 @@ class _HalamanHomeState extends State<HalamanHome> {
       _jumlahMapel = j;
       _mapel = mp;
       _catatan = c;
-      _pilihanSelesai.clear();
       _muat = false;
     });
   }
 
-  /// Daftar tenggat terdekat — termasuk yang baru ditandai selesai dari Home.
-  ///
-  /// `TugasRepository.tenggatTerdekat` sengaja hanya mengembalikan tugas berstatus
-  /// BELUM (dipakai juga untuk hitungan di tempat lain). Di Home, baris yang
-  /// baru dicentang tetap ditampilkan sesaat supaya bisa diurungkan.
-  ///
-  /// **Reused in:** [build] (tenggat terdekat section)
-  /// **Calls:** [_dekat], [_lewat], [_pilihanSelesai]
-  List<Tugas> get _tampilDekat {
-    if (_pilihanSelesai.isEmpty) return _dekat;
-    final idTerpilih = _dekat.map((t) => t.id).toSet();
-    final tambahan = _lewat.where(
-      (t) => _pilihanSelesai.contains(t.id) && !idTerpilih.contains(t.id),
-    );
-    return [..._dekat, ...tambahan];
-  }
+  /// Daftar tenggat terdekat yang ditampilkan (langsung dari sumber data).
+  /// Tugas yang sudah dicentang selesai dikeluarkan dari [_dekat] oleh [_tandai],
+  /// jadi daftar tidak melompat ke seksi lain.
+  /// dipakai di build (tenggat terdekat section), _kartuTugas, _hasilCari
+  List<Tugas> get _tampilDekat => _dekat;
 
   /// Menandai tugas selesai / belum selesai dari Home, dengan tombol Urungkan.
-  ///
-  /// Optimistic UI: update lokal dulu, lalu SnackBar dengan action "Urungkan"
-  /// yang memanggil _tandai lagi dengan selesai=false.
-  ///
-  /// **Reused in:** [_kartuFokus] (FilledButton.tonalIcon), [_kartuTugas] (ketuk kartu), [_barisTugas] (Checkbox.onChanged, ListTile.onTap)
-  /// **Calls:** [TugasRepository.ubahStatus], [SkemaDb.statusSelesai], [SkemaDb.statusBelum], [setState], [_geser], [tp], [ScaffoldMessenger.showSnackBar], [_segarkan]
+  /// Setelah dicentang, tugas langsung dikeluarkan dari daftar (tidak bisa
+  /// dicentang dua kali dan daftar tidak melompat ke seksi lain).
+  /// dipakai di _kartuFokus, _kartuTugas, _barisTugas
   Future<void> _tandai(Tugas tg, {required bool selesai}) async {
     final id = tg.id;
     if (id == null) return;
 
-    await _tugasRepo.ubahStatus(
-      id,
-      selesai ? SkemaDb.statusSelesai : SkemaDb.statusBelum,
-    );
-    if (!mounted) return;
+    // Tolak klik ganda selama penyimpanan berjalan.
+    if (!_sedangProses.add(id)) return;
+    try {
+      await _tugasRepo.ubahStatus(
+        id,
+        selesai ? SkemaDb.statusSelesai : SkemaDb.statusBelum,
+      );
+      if (!mounted) return;
 
-    final sebelum = _ringkasan;
-    setState(() {
-      if (selesai) {
-        _pilihanSelesai.add(id);
-      } else {
-        _pilihanSelesai.remove(id);
+      if (!selesai) {
+        await _segarkan();
+        return;
       }
-      // Angka ringkasan digeser langsung supaya ketukan terasa seketika;
-      // nilai sebenarnya tetap datang dari query saat penyegaran.
-      if (sebelum != null) {
-        _ringkasan = RingkasanTugas(
-          belum: _geser(sebelum.belum, selesai ? -1 : 1),
-          selesai: _geser(sebelum.selesai, selesai ? 1 : -1),
-          lewat: tg.lewatTenggat ? _geser(sebelum.lewat, selesai ? -1 : 1) : sebelum.lewat,
-        );
-      }
-    });
 
-    if (!selesai) {
-      _segarkan();
-      return;
-    }
+      final sebelum = _ringkasan;
+      setState(() {
+        _dekat.removeWhere((x) => x.id == id);
+        _lewat.removeWhere((x) => x.id == id);
+        if (sebelum != null) {
+          _ringkasan = RingkasanTugas(
+            belum: _geser(sebelum.belum, -1),
+            selesai: _geser(sebelum.selesai, 1),
+            lewat: tg.lewatTenggat ? _geser(sebelum.lewat, -1) : sebelum.lewat,
+          );
+        }
+      });
 
-    final pesan = tp('home_selesai_pesan', {'judul': tg.judul});
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(pesan),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: t('home_urungkan'),
-          onPressed: () => _tandai(tg, selesai: false),
+      final pesan = tp('home_selesai_pesan', {'judul': tg.judul});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(pesan),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: t('home_urungkan'),
+            onPressed: () => _tandai(tg, selesai: false),
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      _sedangProses.remove(id);
+    }
   }
 
   /// Geser angka ringkasan tanpa pernah membiarkannya negatif.
+  /// dipakai di _tandai
   int _geser(int nilai, int delta) {
     final hasil = nilai + delta;
     return hasil < 0 ? 0 : hasil;
   }
 
   /// Waktu acuan: waktu uji bila dipatok tes, selain itu waktu perangkat.
+  /// dipakai di _sapaan, build (tanggalPendek)
   DateTime get _kini => HalamanHome.waktuUji ?? DateTime.now();
 
   /// Sapaan sesuai jam acuan (pagi/siang/sore/malam).
+  /// dipakai di build (sapaan text)
   String get _sapaan {
     final jam = _kini.hour;
     if (jam < 11) return t('home_sapaan_pagi');
@@ -219,9 +180,8 @@ class _HalamanHomeState extends State<HalamanHome> {
     return t('home_sapaan_malam');
   }
 
-  /// Tugas pertama yang belum selesai dari daftar terdekat — dipakai untuk
-  /// kartu "Fokus hari ini". Bila tidak ada yang mendekat, ambil dari daftar
-  /// yang lewat tenggat supaya kartu tidak pernah kosong saat ada tugas.
+  /// Tugas pertama yang belum selesai dari daftar terdekat — untuk kartu "Fokus hari ini".
+  /// dipakai di build (fokus section)
   Tugas? get _fokus {
     for (final t in _dekat) {
       if (!t.selesai) return t;
@@ -229,31 +189,34 @@ class _HalamanHomeState extends State<HalamanHome> {
     return _lewat.isEmpty ? null : _lewat.first;
   }
 
-  /// `true` bila tugas ini dianggap selesai di layar (termasuk yang baru
-  /// dicentang dan belum tersegarkan).
-  bool _selesaiDiLayar(Tugas tg) =>
-      tg.selesai || (tg.id != null && _pilihanSelesai.contains(tg.id));
+  /// true bila tugas ini sudah selesai menurut data.
+  /// dipakai di _kartuTugas, _barisTugas
+  bool _selesaiDiLayar(Tugas tg) => tg.selesai;
 
   /// Menyaring daftar tugas dengan kata kunci aktif.
+  /// dipakai di _hasilCari
   List<Tugas> _saringTugas(List<Tugas> sumber) {
     if (_kata.isEmpty) return sumber;
     return sumber.where((tg) {
-      final teks =
-          '${tg.judul} ${tg.deskripsi ?? ''} ${tg.namaMapel ?? ''}'.toLowerCase();
+      final teks = '${tg.judul} ${tg.deskripsi ?? ''} ${tg.namaMapel ?? ''}'
+          .toLowerCase();
       return teks.contains(_kata);
     }).toList();
   }
 
   /// Menyaring daftar catatan dengan kata kunci aktif.
+  /// dipakai di _hasilCari
   List<Materi> _saringCatatan(List<Materi> sumber) {
     if (_kata.isEmpty) return sumber;
     return sumber.where((m) {
-      final teks = '${m.judul} ${m.isi ?? ''} ${m.namaMapel ?? ''}'.toLowerCase();
+      final teks = '${m.judul} ${m.isi ?? ''} ${m.namaMapel ?? ''}'
+          .toLowerCase();
       return teks.contains(_kata);
     }).toList();
   }
 
   /// Menyaring daftar mapel dengan kata kunci aktif.
+  /// dipakai di _hasilCari
   List<Mapel> _saringMapel(List<Mapel> sumber) {
     if (_kata.isEmpty) return sumber;
     return sumber.where((m) {
@@ -275,7 +238,6 @@ class _HalamanHomeState extends State<HalamanHome> {
     return RefreshIndicator(
       onRefresh: _segarkan,
       child: ListView(
-        // Padding bawah dari MediaQuery, bukan angka tetap.
         padding: EdgeInsets.fromLTRB(
           Jarak.j14,
           Jarak.j14,
@@ -286,16 +248,15 @@ class _HalamanHomeState extends State<HalamanHome> {
           // ── 1. Sapaan + tanggal ────────────────────────────
           Text(
             _sapaan,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: Jarak.j2),
           Text(
             tp('home_pada_tenggat', {'tgl': tanggalPendek(_kini)}),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: Jarak.j16),
 
@@ -329,14 +290,26 @@ class _HalamanHomeState extends State<HalamanHome> {
           // ── 3. Ringkasan angka ─────────────────────────────
           Row(
             children: [
-              _angka(context, '${r.belum}', t('home_belum'),
-                  Theme.of(context).colorScheme.primary),
+              _angka(
+                context,
+                '${r.belum}',
+                t('home_belum'),
+                Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(width: Jarak.j10),
-              _angka(context, '${r.selesai}', t('home_selesai'),
-                  const Color(0xFF2E7D53)),
+              _angka(
+                context,
+                '${r.selesai}',
+                t('home_selesai'),
+                const Color(0xFF2E7D53),
+              ),
               const SizedBox(width: Jarak.j10),
-              _angka(context, '${r.lewat}', t('home_lewat'),
-                  Theme.of(context).colorScheme.error),
+              _angka(
+                context,
+                '${r.lewat}',
+                t('home_lewat'),
+                Theme.of(context).colorScheme.error,
+              ),
             ],
           ),
           const SizedBox(height: Jarak.j20),
@@ -354,8 +327,12 @@ class _HalamanHomeState extends State<HalamanHome> {
           ] else ...[
             // ── 4. Fokus hari ini ────────────────────────────
             if (fokus != null) ...[
-              _kepala(context, t('home_fokus'), Icons.local_fire_department_outlined,
-                  warna: Theme.of(context).colorScheme.primary),
+              _kepala(
+                context,
+                t('home_fokus'),
+                Icons.local_fire_department_outlined,
+                warna: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(height: Jarak.j8),
               _kartuFokus(context, fokus),
               const SizedBox(height: Jarak.j18),
@@ -363,52 +340,64 @@ class _HalamanHomeState extends State<HalamanHome> {
 
             // ── 5. Lewat tenggat ─────────────────────────────
             if (_lewat.isNotEmpty) ...[
-              _kepala(context, t('home_lewat_judul'), Icons.warning_amber_rounded,
-                  warna: Theme.of(context).colorScheme.error),
+              _kepala(
+                context,
+                t('home_lewat_judul'),
+                Icons.warning_amber_rounded,
+                warna: Theme.of(context).colorScheme.error,
+              ),
               const SizedBox(height: Jarak.j8),
-              for (final t2 in _lewat
-                  .where((x) => !_pilihanSelesai.contains(x.id))
-                  .take(3))
+              for (final t2 in _lewat.take(3))
                 _barisTugas(context, t2, lewat: true),
               const SizedBox(height: Jarak.j18),
             ],
 
-            // ── 6. Tenggat terdekat, dua kolom (wireframe: Upcoming)
+            // ── 6. Tenggat terdekat, dua kolom ───────────────
             _kepala(context, t('home_dekat_judul'), Icons.schedule_outlined),
             const SizedBox(height: Jarak.j8),
             if (_tampilDekat.isEmpty)
               Card(
-                  child: Padding(
-                padding: const EdgeInsets.all(Jarak.j16),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle_outline,
-                        color: Theme.of(context).colorScheme.primary),
-                    const SizedBox(width: Jarak.j10),
-                    Expanded(child: Text(t('home_tanpa_dekat'))),
-                  ],
+                child: Padding(
+                  padding: const EdgeInsets.all(Jarak.j16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: Jarak.j10),
+                      Expanded(child: Text(t('home_tanpa_dekat'))),
+                    ],
+                  ),
                 ),
-              ))
+              )
             else
               ..._duaKolom([
                 for (final t2 in _tampilDekat) _kartuTugas(context, t2),
               ]),
 
-            // ── 7. Mata pelajaran 2×2 (wireframe: Subjects) ──
+            // ── 7. Mata pelajaran 2×2 ────────────────────────
             const SizedBox(height: Jarak.j8),
-            _kepala(context, t('home_subjek_judul'), Icons.menu_book_outlined,
-                onLihatSemua: widget.onBukaAcademic),
+            _kepala(
+              context,
+              t('home_subjek_judul'),
+              Icons.menu_book_outlined,
+              onLihatSemua: widget.onBukaAcademic,
+            ),
             const SizedBox(height: Jarak.j8),
             ..._duaKolom([
               for (final m in _mapel.take(4)) _kartuMapel(context, m),
             ]),
 
-            // ── 8. Catatan terbaru (wireframe: Recent Notes) ─
+            // ── 8. Catatan terbaru ───────────────────────────
             if (_catatan.isNotEmpty) ...[
               const SizedBox(height: Jarak.j8),
-              _kepala(context, t('home_catatan_judul'),
-                  Icons.sticky_note_2_outlined,
-                  onLihatSemua: widget.onBukaAcademic),
+              _kepala(
+                context,
+                t('home_catatan_judul'),
+                Icons.sticky_note_2_outlined,
+                onLihatSemua: widget.onBukaAcademic,
+              ),
               const SizedBox(height: Jarak.j8),
               for (final m in _catatan.take(3)) _kartuCatatan(context, m),
             ],
@@ -419,12 +408,7 @@ class _HalamanHomeState extends State<HalamanHome> {
   }
 
   /// Blok hasil pencarian: tugas dan catatan yang cocok dengan kata kunci.
-  ///
-  /// Dipakai saat kotak cari terisi. Bila tidak ada yang cocok, tampilkan
-  /// keadaan kosong yang sudah ada (`ak_tidak_ditemukan`).
-  ///
-  /// **Reused in:** [build] (saat _kata tidak kosong)
-  /// **Calls:** [_saringTugas], [_saringCatatan], [_saringMapel], [_kepala], [_kartuTugas], [_kartuCatatan], [_kartuMapel], [_duaKolom], [Kosong]
+  /// dipakai di build (saat _kata tidak kosong)
   Widget _hasilCari(BuildContext c) {
     final tugas = _saringTugas([..._tampilDekat, ..._lewat]);
     final catatan = _saringCatatan(_catatan);
@@ -463,13 +447,7 @@ class _HalamanHomeState extends State<HalamanHome> {
   }
 
   /// Membagi daftar kartu menjadi baris dua kolom dengan tinggi seragam.
-  ///
-  /// Dipakai blok "Tenggat terdekat", "Mata pelajaran", dan hasil pencarian.
-  /// Jumlah kartu sedikit (maksimal 6), jadi [IntrinsicHeight] aman dan
-  /// membuat kedua kartu sebaris sama tinggi.
-  ///
-  /// **Reused in:** [build] (dekat, subjects), [_hasilCari]
-  /// **Calls:** [IntrinsicHeight], [Row], [Expanded]
+  /// dipakai di build (dekat, subjects), _hasilCari
   List<Widget> _duaKolom(List<Widget> kartu) {
     final hasil = <Widget>[];
     for (var i = 0; i < kartu.length; i += 2) {
@@ -493,9 +471,7 @@ class _HalamanHomeState extends State<HalamanHome> {
   }
 
   /// Judul seksi dengan ikon, dan tautan "Lihat semua" bila diminta.
-  ///
-  /// **Reused in:** [build] (6x: fokus, lewat, dekat, subjek, catatan), [_hasilCari]
-  /// **Calls:** [Theme.of], [Icon], [Text], [TextTheme.titleSmall], [TextButton]
+  /// dipakai di build (6x: fokus, lewat, dekat, subjek, catatan), _hasilCari
   Widget _kepala(
     BuildContext c,
     String teks,
@@ -512,9 +488,9 @@ class _HalamanHomeState extends State<HalamanHome> {
           child: Text(
             teks,
             style: Theme.of(c).textTheme.titleSmall?.copyWith(
-                  color: warna ?? skema.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: warna ?? skema.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         if (onLihatSemua != null)
@@ -527,12 +503,7 @@ class _HalamanHomeState extends State<HalamanHome> {
   }
 
   /// Kartu besar untuk tugas paling mendesak ("Fokus hari ini").
-  ///
-  /// Menampilkan: judul, tenggat relatif (Tanda), nama mapel, deskripsi (opsional),
-  /// tombol "Tandai selesai" yang memanggil [_tandai].
-  ///
-  /// **Reused in:** [build] (fokus section)
-  /// **Calls:** [Tanda], [tenggatRelatif], [t], [FilledButton.tonalIcon], [_tandai]
+  /// dipakai di build (fokus section)
   Widget _kartuFokus(BuildContext c, Tugas tg) {
     final skema = Theme.of(c).colorScheme;
     final lewat = tg.lewatTenggat;
@@ -548,9 +519,8 @@ class _HalamanHomeState extends State<HalamanHome> {
                 Expanded(
                   child: Text(
                     tg.judul,
-                    style: Theme.of(c).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                    style: Theme.of(c).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
                 Tanda(
@@ -562,9 +532,8 @@ class _HalamanHomeState extends State<HalamanHome> {
             const SizedBox(height: Jarak.j6),
             Text(
               tg.namaMapel ?? t('home_tanpa_mapel'),
-              style: Theme.of(c).textTheme.bodySmall?.copyWith(
-                    color: skema.onSurfaceVariant,
-                  ),
+              style: Theme.of(c).textTheme.bodySmall
+                  ?.copyWith(color: skema.onSurfaceVariant),
             ),
             if ((tg.deskripsi ?? '').trim().isNotEmpty) ...[
               const SizedBox(height: Jarak.j8),
@@ -591,12 +560,7 @@ class _HalamanHomeState extends State<HalamanHome> {
   }
 
   /// Kartu tugas dua kolom (wireframe "Upcoming").
-  ///
-  /// Ketuk kartu = tandai selesai; ketuk lagi (atau lewat **Urungkan** pada
-  /// SnackBar) = kembalikan ke belum selesai.
-  ///
-  /// **Reused in:** [build] (tenggat terdekat), [_hasilCari] (hasil tugas)
-  /// **Calls:** [Card], [InkWell], [Tanda], [tenggatRelatif], [_selesaiDiLayar], [_tandai]
+  /// dipakai di build (tenggat terdekat), _hasilCari (hasil tugas)
   Widget _kartuTugas(BuildContext c, Tugas tg) {
     final skema = Theme.of(c).colorScheme;
     final selesai = _selesaiDiLayar(tg);
@@ -621,18 +585,15 @@ class _HalamanHomeState extends State<HalamanHome> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(c).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            decoration:
-                                selesai ? TextDecoration.lineThrough : null,
-                            color: selesai ? skema.onSurfaceVariant : null,
-                          ),
+                        fontWeight: FontWeight.w600,
+                        decoration: selesai ? TextDecoration.lineThrough : null,
+                        color: selesai ? skema.onSurfaceVariant : null,
+                      ),
                     ),
                   ),
                   const SizedBox(width: Jarak.j6),
                   Icon(
-                    selesai
-                        ? Icons.check_circle
-                        : Icons.check_circle_outline,
+                    selesai ? Icons.check_circle : Icons.check_circle_outline,
                     size: Ikon.cek,
                     color: selesai ? skema.primary : skema.onSurfaceVariant,
                   ),
@@ -643,18 +604,12 @@ class _HalamanHomeState extends State<HalamanHome> {
                 tg.namaMapel ?? t('home_tanpa_mapel'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(c).textTheme.bodySmall?.copyWith(
-                      color: skema.onSurfaceVariant,
-                    ),
+                style: Theme.of(c).textTheme.bodySmall
+                    ?.copyWith(color: skema.onSurfaceVariant),
               ),
-              // Spacer: judul boleh 1 atau 2 baris, tapi pil tenggat harus
-              // rata bawah di kedua kartu sebaris. Tanpa ini pil kanan-kiri
-              // berdiri di ketinggian berbeda (cacat tampilan, bukan bug data).
               const Spacer(),
               Tanda(
-                teks: selesai
-                    ? t('home_selesai')
-                    : tenggatRelatif(tg.tenggat),
+                teks: selesai ? t('home_selesai') : tenggatRelatif(tg.tenggat),
                 warna: selesai
                     ? skema.primary
                     : (lewat ? skema.error : skema.primary),
@@ -667,11 +622,7 @@ class _HalamanHomeState extends State<HalamanHome> {
   }
 
   /// Kartu mata pelajaran dua kolom (wireframe "Subjects").
-  ///
-  /// Ketuk kartu = buka halaman detail mapel.
-  ///
-  /// **Reused in:** [build] (subjects grid), [_hasilCari]
-  /// **Calls:** [TemaApp.dariHex], [tp], [HalamanDetailMapel], [Card], [InkWell]
+  /// dipakai di build (subjects grid), _hasilCari
   Widget _kartuMapel(BuildContext c, Mapel m) {
     final skema = Theme.of(c).colorScheme;
     final warna = TemaApp.dariHex(m.warna, cadangan: skema.primary);
@@ -679,9 +630,9 @@ class _HalamanHomeState extends State<HalamanHome> {
     return Card(
       margin: EdgeInsets.zero,
       child: InkWell(
-        onTap: () => Navigator.of(c).push(
-          MaterialPageRoute(builder: (_) => HalamanDetailMapel(mapel: m)),
-        ),
+        onTap: () => Navigator.of(
+          c,
+        ).push(MaterialPageRoute(builder: (_) => HalamanDetailMapel(mapel: m))),
         borderRadius: BorderRadius.circular(Sudut.r14),
         child: Padding(
           padding: const EdgeInsets.all(Jarak.j12),
@@ -699,24 +650,20 @@ class _HalamanHomeState extends State<HalamanHome> {
                       m.nama,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(c).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                      style: Theme.of(c).textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: Jarak.j6),
               Text(
-                // Kunci kamus yang sudah ada — jangan hardcode "materi"/"tugas",
-                // pengguna mode Inggris akan melihat teks Indonesia.
                 '${tp('k_n_materi', {'n': '${m.jumlahMateri}'})} · '
                 '${tp('k_n_tugas', {'n': '${m.jumlahTugas}'})}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(c).textTheme.labelSmall?.copyWith(
-                      color: skema.onSurfaceVariant,
-                    ),
+                style: Theme.of(c).textTheme.labelSmall
+                    ?.copyWith(color: skema.onSurfaceVariant),
               ),
             ],
           ),
@@ -726,9 +673,7 @@ class _HalamanHomeState extends State<HalamanHome> {
   }
 
   /// Kartu satu catatan terbaru (wireframe "Recent Notes").
-  ///
-  /// **Reused in:** [build] (catatan terbaru), [_hasilCari]
-  /// **Calls:** [Card], [ListTile], [t]
+  /// dipakai di build (catatan terbaru), _hasilCari
   Widget _kartuCatatan(BuildContext c, Materi m) {
     final skema = Theme.of(c).colorScheme;
     return Card(
@@ -747,11 +692,7 @@ class _HalamanHomeState extends State<HalamanHome> {
             color: skema.primary,
           ),
         ),
-        title: Text(
-          m.judul,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: Text(m.judul, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text(
           m.namaMapel ?? t('home_tanpa_mapel'),
           maxLines: 1,
@@ -762,31 +703,29 @@ class _HalamanHomeState extends State<HalamanHome> {
   }
 
   /// Kartu angka ringkasan (belum/selesai/lewat) — 3 kartu berdampingan.
-  ///
-  /// **Reused in:** [build] (3x: belum, selesai, lewat)
-  /// **Calls:** [Theme.of], [Card], [Text], [TextTheme.headlineSmall], [TextTheme.labelSmall]
+  /// dipakai di build (3x: belum, selesai, lewat)
   Widget _angka(BuildContext c, String angka, String label, Color warna) {
     final skema = Theme.of(c).colorScheme;
     return Expanded(
       child: Card(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: Jarak.j14, horizontal: Jarak.j8),
+          padding: const EdgeInsets.symmetric(
+            vertical: Jarak.j14,
+            horizontal: Jarak.j8,
+          ),
           child: Column(
             children: [
               Text(
                 angka,
-                style: Theme.of(c).textTheme.headlineSmall?.copyWith(
-                      color: warna,
-                      fontWeight: FontWeight.w700,
-                    ),
+                style: Theme.of(c).textTheme.headlineSmall
+                    ?.copyWith(color: warna, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: Jarak.j2),
               Text(
                 label,
                 textAlign: TextAlign.center,
-                style: Theme.of(c).textTheme.labelSmall?.copyWith(
-                      color: skema.onSurfaceVariant,
-                    ),
+                style: Theme.of(c).textTheme.labelSmall
+                    ?.copyWith(color: skema.onSurfaceVariant),
               ),
             ],
           ),
@@ -796,13 +735,7 @@ class _HalamanHomeState extends State<HalamanHome> {
   }
 
   /// Satu baris tugas dengan checkbox (dipakai blok lewat tenggat).
-  ///
-  /// Menandai selesai tidak langsung menghilangkan baris: tugas selesai tetap
-  /// tampil (dengan judul dicoret) sampai daftar disegarkan, supaya pengguna
-  /// sempat menekan **Urungkan** kalau salah ketuk.
-  ///
-  /// **Reused in:** [build] (lewat tenggat section)
-  /// **Calls:** [Tanda], [tenggatRelatif], [t], [_tandai], [Checkbox], [ListTile]
+  /// dipakai di build (lewat tenggat section)
   Widget _barisTugas(BuildContext c, Tugas tg, {bool lewat = false}) {
     final skema = Theme.of(c).colorScheme;
 

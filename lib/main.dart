@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:syllabind/services/db.dart';
-import 'package:syllabind/services/pengaturan_repository_impl.dart';
-import 'package:syllabind/services/pengaturan_repository.dart';
+import 'package:syllabind/services/pengaturan_service_impl.dart';
+import 'package:syllabind/services/pengaturan_service.dart';
 import 'package:syllabind/screen/home_page.dart';
 import 'package:syllabind/screen/academic_page.dart';
 import 'package:syllabind/screen/penyimpanan_page.dart';
@@ -14,14 +14,8 @@ void main() {
   runApp(const Syllabind());
 }
 
-/// Memetakan nilai pengaturan tema (string) ke [ThemeMode] enum.
-///
-/// - `'terang'` → [ThemeMode.light]
-/// - `'gelap'` → [ThemeMode.dark]
-/// - lainnya (termasuk `'sistem'`) → [ThemeMode.system]
-///
-/// **Reused in:** [_SyllabindState._muat]
-/// **Calls:** [ThemeMode] enum
+/// Mengubah string tema ('terang'/'gelap'/'sistem') jadi ThemeMode enum.
+/// dipakai di [_SyllabindState._muat:107]
 ThemeMode modeDari(String tema) => switch (tema) {
       'terang' => ThemeMode.light,
       'gelap' => ThemeMode.dark,
@@ -29,14 +23,10 @@ ThemeMode modeDari(String tema) => switch (tema) {
     };
 
 /// Root widget aplikasi Syllabind.
-///
-/// Menginisialisasi pengaturan (tema, warna aksen, bahasa) dari database
-/// sebelum menampilkan UI. Menggunakan [ValueListenableBuilder] pada
-/// [Bahasa.aktif] agar ganti bahasa memicu rebuild seluruh MaterialApp
-/// tanpa restart aplikasi.
-///
-/// **Reused in:** [main] (runApp)
-/// **Calls:** [PengaturanRepo.tema], [PengaturanRepo.warnaAksen], [PengaturanRepo.bahasa], [Bahasa.set], [TemaApp.dariHex], [modeDari], [ValueListenableBuilder], [MaterialApp], [TemaApp.terang], [TemaApp.gelap], [RumahAplikasi]
+/// Inisialisasi pengaturan (tema, warna aksen, bahasa) dari database sebelum UI.
+/// ValueListenableBuilder pada Bahasa.aktif biar ganti bahasa rebuild MaterialApp tanpa restart.
+/// dipakai di [main:14]
+/// panggil [PengaturanRepo.tema], [PengaturanRepo.warnaAksen], [PengaturanRepo.bahasa], [Bahasa.set], [TemaApp.dariHex], [modeDari], [ValueListenableBuilder], [MaterialApp], [TemaApp.terang], [TemaApp.gelap], [RumahAplikasi]
 class Syllabind extends StatefulWidget {
   const Syllabind({super.key});
 
@@ -45,7 +35,7 @@ class Syllabind extends StatefulWidget {
 }
 
 class _SyllabindState extends State<Syllabind> {
-  late final PengaturanRepository _pengaturan;
+  late final PengaturanService _pengaturan;
 
   ThemeMode _mode = ThemeMode.system;
   Color _aksen = TemaApp.aksenDefault;
@@ -54,18 +44,15 @@ class _SyllabindState extends State<Syllabind> {
   @override
   void initState() {
     super.initState();
-    _pengaturan = PengaturanRepositoryImpl();
+    _pengaturan = PengaturanServiceImpl();
     _muat();
   }
 
   /// Memuat preferensi dari database & set state.
-  ///
-  /// Dipanggil di initState dan juga via callback [RumahAplikasi.onDataBerubah]
-  /// saat user mengubah tema/warna/bahasa di halaman Pengaturan.
-  ///
-  /// **Reused in:** [initState], [RumahAplikasi.onDataBerubah] (callback)
-  /// **Calls:** [PengaturanRepo.tema], [PengaturanRepo.warnaAksen], [PengaturanRepo.bahasa], [Bahasa.set], [TemaApp.dariHex], [modeDari], [setState]
-  Future<void> _muat() async {
+    /// Dipanggil di initState & callback RumahAplikasi.onDataBerubah saat user ubah pengaturan.
+    /// dipakai di [initState:85], [RumahAplikasi.onDataBerubah:194]
+    /// panggil [PengaturanRepo.tema], [PengaturanRepo.warnaAksen], [PengaturanRepo.bahasa], [Bahasa.set], [TemaApp.dariHex], [modeDari], [setState]
+    Future<void> _muat() async {
     final tema = await _pengaturan.tema();
     final hex = await _pengaturan.warnaAksen();
     final bahasa = await _pengaturan.bahasa();
@@ -104,13 +91,9 @@ class _SyllabindState extends State<Syllabind> {
 }
 
 /// Navigasi utama (bottom bar) — 4 tab: Home, Academic, Library, Pengaturan.
-///
-/// Menggunakan [NavigationBar] (Material 3) + [SafeArea] di bawah.
-/// Setiap halaman dibungkus [SafeArea] sendiri agar konten tidak tertutup
-/// status bar / navigation bar / notch / island.
-///
-/// **Reused in:** [Syllabind.build] (MaterialApp.home)
-/// **Calls:** [HalamanHome], [HalamanAcademic], [HalamanPenyimpanan], [HalamanPengaturan], [NavigationBar], [SafeArea], [NavigationDestination]
+/// NavigationBar (Material 3) + SafeArea di bawah. Setiap halaman SafeArea sendiri biar konten gak ketutup status bar / nav bar / notch.
+/// dipakai di [Syllabind.build:124]
+/// panggil [HalamanHome], [HalamanAcademic], [HalamanPenyimpanan], [HalamanPengaturan], [NavigationBar], [SafeArea], [NavigationDestination]
 class RumahAplikasi extends StatefulWidget {
   final VoidCallback onDataBerubah;
 

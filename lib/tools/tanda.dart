@@ -4,8 +4,7 @@ import 'package:syllabind/tools/tema.dart';
 import 'package:syllabind/tools/tokens.dart';
 
 /// Tanda status kecil (mis. "Lewat tenggat", "Selesai").
-///
-/// Kotak bulat dengan warna background transparan + teks berwarna.
+/// dipakai di HalamanHome._buildTugasItem, HalamanDetailMapel._TabTugasMapel._buildItem
 class Tanda extends StatelessWidget {
   final String teks;
   final Color warna;

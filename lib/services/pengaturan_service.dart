@@ -1,5 +1,5 @@
-/// Contract untuk repository Pengaturan (Key-Value store sederhana).
-abstract class PengaturanRepository {
+/// Contract untuk service Pengaturan (Key-Value store sederhana).
+abstract class PengaturanService {
   /// Kunci pengaturan tema: `system` | `terang` | `gelap`.
   static const String kunciTema = 'tema';
 

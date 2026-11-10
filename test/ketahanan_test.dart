@@ -55,7 +55,7 @@ void main() {
     await Db.tutup();
   });
 
-  /// Warna aksen default aplikasi (sama dengan nilai awal di PengaturanRepositoryImpl).
+  /// Warna aksen default aplikasi (sama dengan nilai awal di PengaturanServiceImpl).
   const aksen = Color(0xFF2F6F6B);
 
   /// Kondisi yang diuji. `lebar` dalam dp; skala = textScaleFactor.

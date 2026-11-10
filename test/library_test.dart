@@ -27,7 +27,7 @@ void main() {
   });
 
   tearDownAll(() async {
-    LampiranRepositoryImpl.folderUji = null;
+      LampiranServiceImpl.folderUji = null;
     await Db.tutup();
   });
 
@@ -35,23 +35,23 @@ void main() {
     await Db.reset();
     akarUji = Directory(p.join(Directory.current.path, 'build', 'uji_tmp'));
     await akarUji.create(recursive: true);
-    LampiranRepositoryImpl.folderUji = akarUji;
+      LampiranServiceImpl.folderUji = akarUji;
     Bahasa.set(Bahasa.id);
   });
 
   /// Menyiapkan satu mapel + materi + lampiran, mengembalikan mapel id.
   Future<int> siapkanLampiran(String namaBerkas) async {
-    final mapelRepo = MapelRepositoryImpl();
+      final mapelRepo = MapelServiceImpl();
     final mapelId = await mapelRepo.tambah(Mapel(nama: 'Fisika'));
 
-    final materiRepo = MateriRepositoryImpl();
+      final materiRepo = MateriServiceImpl();
     final materiId = await materiRepo.tambah(
       Materi(mapelId: mapelId, judul: 'Catatan Fisika'),
     );
 
     final sumber = File(p.join(akarUji.path, namaBerkas));
     await sumber.writeAsString('isi uji ${DateTime.now().microsecondsSinceEpoch}');
-    await LampiranRepositoryImpl().tambahDariFile(
+      await LampiranServiceImpl().tambahDariFile(
       materiId: materiId,
       sumber: sumber,
       tipe: Lampiran.tipeFile,
@@ -118,7 +118,7 @@ void main() {
     });
     await tester.pumpAndSettle();
 
-    final sesudah = await tester.runAsync(() => LampiranRepositoryImpl().semua());
+    final sesudah = await tester.runAsync(() => LampiranServiceImpl().semua());
     expect(sesudah!.map((l) => l.namaFile), contains('baru.pdf'));
     expect(sesudah.map((l) => l.namaFile), isNot(contains('lama.pdf')));
   });
@@ -150,7 +150,7 @@ void main() {
     });
 
     // Data di DB adalah bukti utama; tampilan menyusul setelah frame biasa.
-    final sesudah = await tester.runAsync(() => LampiranRepositoryImpl().semua());
+        final sesudah = await tester.runAsync(() => LampiranServiceImpl().semua());
     expect(sesudah!.map((l) => l.namaFile), isNot(contains('buang.pdf')));
 
     await tester.pumpAndSettle();

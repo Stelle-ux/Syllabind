@@ -9,21 +9,8 @@ import 'package:syllabind/function/mapel.dart';
 import 'package:syllabind/services/index.dart';
 import 'package:syllabind/tools/index.dart';
 
-/// Halaman 3 — **Library** (dulu bernama "Penyimpanan").
-///
-/// Berisi **hanya Lampiran** (Gambar + File) dari seluruh mapel, rekapitulasi
-/// ukuran, tombol **+ Tambah** untuk memasukkan gambar/file langsung dari
-/// halaman ini, dan opsi per-item: **Lihat**, **Ganti nama**, **Hapus**.
-///
-/// Ekspor `.txt` sengaja TIDAK ada di sini lagi — ekspor dilakukan
-/// per-catatan dari halaman Detail Mapel, karena Library ini soal berkas,
-/// bukan soal catatan.
-///
-/// Nama kelas tetap `HalamanPenyimpanan` supaya tidak memaksa perubahan di
-/// `main.dart` dan berkas tes; yang berubah hanya label yang dilihat pengguna.
-///
-/// **Reused in:** [main.dart] (NavigationBar index 2)
-/// **Calls:** [_HalamanPenyimpananState]
+/// Halaman 3 — Library (dulu bernama Penyimpanan).
+/// dipakai di main.dart
 class HalamanPenyimpanan extends StatefulWidget {
   const HalamanPenyimpanan({super.key});
 
@@ -31,28 +18,14 @@ class HalamanPenyimpanan extends StatefulWidget {
   State<HalamanPenyimpanan> createState() => _HalamanPenyimpananState();
 }
 
-/// State untuk [HalamanPenyimpanan].
-///
-/// Mengelola:
-/// - Daftar semua lampiran (_data) + loading (_muat)
-/// - Filter tipe (_saring: SEMUA/GAMBAR/FILE)
-/// - Total ukuran (_totalByte)
-/// - Tambah lampiran via galeri/file picker (_tambahLampiran)
-/// - Pilih mapel tujuan (_pilihMapel)
-/// - Ambil berkas dari perangkat (_ambilBerkas)
-/// - Hapus lampiran (_konfirmasiHapus)
-/// - Buka lampiran dengan aplikasi luar (_buka)
-/// - Ganti nama lampiran (_ubahNamaLampiran)
-/// - Statistik kartu (_statistik) + format ukuran (_ukuran)
-///
-/// **Reused in:** [HalamanPenyimpanan.createState]
-/// **Calls:** [LampiranRepo], [MapelRepo], [ImagePicker], [FilePicker], [OpenFilex], [Kosong], [konfirmasi], [pesanSukses], [pesanGagal], [t], [tp]
+/// State untuk HalamanPenyimpanan.
+/// dipakai di HalamanPenyimpanan.createState
 class _HalamanPenyimpananState extends State<HalamanPenyimpanan> {
-  final _repo = LampiranRepositoryImpl();
-  final _mapelRepo = MapelRepositoryImpl();
+  final _repo = LampiranServiceImpl();
+  final _mapelRepo = MapelServiceImpl();
 
-  /// Kendali kotak pencarian berkas (wireframe layar 6). Disimpan di State
-  /// supaya isinya tidak hilang saat daftar disegarkan.
+  /// Kendali kotak pencarian berkas. Disimpan di State supaya isinya tidak hilang saat daftar disegarkan.
+  /// dipakai di initState, build
   final _cariCtrl = TextEditingController();
 
   List<Lampiran> _data = [];
@@ -61,11 +34,8 @@ class _HalamanPenyimpananState extends State<HalamanPenyimpanan> {
   String _kata = '';
   bool _sibuk = false;
 
-  /// Angka rekapitulasi, dihitung database — bukan dihitung ulang dari daftar
-  /// yang sudah dimuat. [LampiranRepo.jumlahPerTipe] dan
-  /// [LampiranRepo.totalUkuran] memakai klausa saring yang sama dengan
-  /// [LampiranRepo.semua], jadi hasilnya identik; bedanya hanya satu tempat
-  /// yang menghitung.
+  /// Angka rekapitulasi, dihitung database — bukan dihitung ulang dari daftar yang sudah dimuat.
+  /// dipakai di _segarkan, build
   int _jumlahGambar = 0;
   int _jumlahFile = 0;
   int _totalByte = 0;
@@ -88,11 +58,7 @@ class _HalamanPenyimpananState extends State<HalamanPenyimpanan> {
   }
 
   /// Memuat ulang daftar semua lampiran dari database.
-  ///
-  /// Dipanggil di initState dan setelah setiap mutasi (tambah/hapus/ubah nama).
-  ///
-  /// **Reused in:** [initState], [_tambahLampiran], [_konfirmasiHapus], [build] (RefreshIndicator onRefresh)
-  /// **Calls:** [LampiranRepo.semua], [setState]
+  /// dipakai di initState, _tambahLampiran, _konfirmasiHapus, build
   Future<void> _segarkan() async {
     setState(() => _muat = true);
     final d = await _repo.semua();
@@ -109,13 +75,7 @@ class _HalamanPenyimpananState extends State<HalamanPenyimpanan> {
   }
 
   /// Daftar lampiran yang sudah difilter sesuai [_saring].
-  ///
-  /// - 'SEMUA': semua lampiran
-  /// - 'GAMBAR': hanya lampiran.gambar == true
-  /// - 'FILE': hanya lampiran.gambar == false
-  ///
-  /// **Reused in:** [build] (itemCount, isEmpty check, _totalByte)
-  /// **Calls:** [_data.where]
+  /// dipakai di build
   List<Lampiran> get _tampil {
     Iterable<Lampiran> hasil = _data;
     if (_saring == 'GAMBAR') {
@@ -130,18 +90,11 @@ class _HalamanPenyimpananState extends State<HalamanPenyimpanan> {
   }
 
   /// Membuka lampiran memakai aplikasi bawaan perangkat.
-  ///
-  /// Gambar/file diserahkan ke aplikasi lain lewat [OpenFilex]; kalau tidak
-  /// ada aplikasi yang bisa menangani, pengguna diberi tahu alih-alih
-  /// aplikasi diam saja.
-  ///
-  /// **Reused in:** [build] (PopupMenuButton onSelected 'lihat')
-  /// **Calls:** [OpenFilex.open], [tp], [pesanGagal]
+  /// dipakai di build
   Future<void> _buka(Lampiran l) async {
     try {
       final hasil = await OpenFilex.open(l.lokasiFile);
       if (!mounted) return;
-      // 'done' = berkas berhasil diserahkan ke aplikasi lain.
       if (hasil.type != ResultType.done) {
         pesanGagal(context, tp('lib_buka_gagal', {'e': hasil.message}));
       }
@@ -152,12 +105,7 @@ class _HalamanPenyimpananState extends State<HalamanPenyimpanan> {
   }
 
   /// Mengganti nama tampilan lampiran (nama di database, bukan nama di disk).
-  ///
-  /// Berkas fisik sengaja TIDAK di-rename supaya tautan ke berkas tetap sah
-  /// walau penggantian nama gagal di tengah jalan.
-  ///
-  /// **Reused in:** [build] (PopupMenuButton onSelected 'rename')
-  /// **Calls:** [tanyaTeks], [LampiranRepo.ubahNama], [_segarkan], [pesanSukses]
+  /// dipakai di build
   Future<void> _ubahNamaLampiran(Lampiran l) async {
     final hasil = await tanyaTeks(
       context,
@@ -179,17 +127,7 @@ class _HalamanPenyimpananState extends State<HalamanPenyimpanan> {
   // ───────────────────────────────────────────────────────────
 
   /// Menampilkan pilihan sumber: gambar (galeri) atau file dokumen.
-  ///
-  /// Alur:
-  /// 1. Bottom sheet pilih sumber (gambar/file)
-  /// 2. Validasi ada mapel (via [MapelRepo.semua])
-  /// 3. Bottom sheet pilih mapel tujuan ([_pilihMapel])
-  /// 4. Ambil berkas dari perangkat ([_ambilBerkas])
-  /// 5. Simpan via [LampiranRepo.tambahKeMapel]
-  /// 6. Segarkan daftar & tampilkan pesan sukses/gagal
-  ///
-  /// **Reused in:** [build] (FilledButton onPressed, Kosong onTombol)
-  /// **Calls:** [showModalBottomSheet], [MapelRepo.semua], [_pilihMapel], [_ambilBerkas], [LampiranRepo.tambahKeMapel], [_segarkan], [pesanSukses], [pesanGagal], [tp], [t], [Platform.pathSeparator]
+  /// dipakai di build
   Future<void> _tambahLampiran() async {
     final sumber = await showModalBottomSheet<String>(
       context: context,
@@ -263,12 +201,7 @@ class _HalamanPenyimpananState extends State<HalamanPenyimpanan> {
   }
 
   /// Lembar pilih mapel tujuan. Null bila pengguna membatalkan.
-  ///
-  /// Menampilkan daftar mapel sebagai ListTile, mengembalikan mapel.id
-  /// saat ditekan, atau null jika dibatalkan (back/outside tap).
-  ///
-  /// **Reused in:** [_tambahLampiran]
-  /// **Calls:** [showModalBottomSheet], [Navigator.pop]
+  /// dipakai di _tambahLampiran
   Future<int?> _pilihMapel(List<Mapel> daftar) {
     return showModalBottomSheet<int>(
       context: context,
@@ -305,14 +238,7 @@ class _HalamanPenyimpananState extends State<HalamanPenyimpanan> {
   }
 
   /// Mengambil berkas dari perangkat sesuai pilihan sumber.
-  ///
-  /// - 'gambar': [ImagePicker.pickImage] dari galeri
-  /// - 'file': [FilePicker.platform.pickFiles] dokumen
-  ///
-  /// Mengembalikan File atau null jika dibatalkan.
-  ///
-  /// **Reused in:** [_tambahLampiran]
-  /// **Calls:** [ImagePicker.pickImage], [FilePicker.platform.pickFiles], [File]
+  /// dipakai di _tambahLampiran
   Future<File?> _ambilBerkas(String sumber) async {
     if (sumber == 'gambar') {
       final picked = await ImagePicker().pickImage(
@@ -506,12 +432,7 @@ class _HalamanPenyimpananState extends State<HalamanPenyimpanan> {
   }
 
   /// Konfirmasi hapus lampiran lalu hapus dari repo & segarkan.
-  ///
-  /// Menampilkan dialog via [konfirmasi] dengan nama file.
-  /// File asli di perangkat tidak terhapus (hanya salinan internal).
-  ///
-  /// **Reused in:** [build] (ListTile trailing IconButton onPressed)
-  /// **Calls:** [konfirmasi], [tp], [LampiranRepo.hapus], [_segarkan]
+  /// dipakai di build
   Future<void> _konfirmasiHapus(Lampiran l) async {
     final ya = await konfirmasi(
       context,
@@ -524,9 +445,7 @@ class _HalamanPenyimpananState extends State<HalamanPenyimpanan> {
   }
 
   /// Kartu statistik kecil untuk header (jumlah gambar, file, total ukuran).
-  ///
-  /// **Reused in:** [build] (3x di Row header)
-  /// **Calls:** [Icon], [Text], [Theme.of]
+  /// dipakai di build
   Widget _statistik(
     BuildContext c,
     String label,
@@ -544,11 +463,7 @@ class _HalamanPenyimpananState extends State<HalamanPenyimpanan> {
   }
 
   /// Format ukuran byte ke string human-readable (B, KB, MB).
-  ///
-  /// Static method, tidak bergantung state.
-  ///
-  /// **Reused in:** [build] (_statistik untuk total), [_totalByte getter]
-  /// **Calls:** (none - pure computation)
+  /// dipakai di build
   static String _ukuran(int b) {
     if (b < 1024) return '$b B';
     if (b < 1024 * 1024) return '${(b / 1024).toStringAsFixed(1)} KB';
@@ -557,13 +472,7 @@ class _HalamanPenyimpananState extends State<HalamanPenyimpanan> {
 }
 
 /// Kotak cari berkas di halaman Library.
-///
-/// Menyaring **daftar yang sudah dimuat** saja (di dalam memori), bukan
-/// query baru ke database — daftar lampiran biasanya kecil dan hasilnya
-/// langsung terasa saat mengetik.
-///
-/// **Reused in:** [HalamanPenyimpanan.build]
-/// **Calls:** [TextField], [t]
+/// dipakai di HalamanPenyimpanan.build
 class _KotakCariBerkas extends StatelessWidget {
   const _KotakCariBerkas({required this.ctrl});
 

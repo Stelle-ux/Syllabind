@@ -6,9 +6,7 @@ import 'package:syllabind/tools/tema.dart';
 import 'package:syllabind/tools/tokens.dart';
 
 /// Kartu Mapel pada daftar Academic.
-///
-/// Menampilkan: warna penanda, nama, deskripsi (opsional), jumlah materi & tugas,
-/// tombol hapus (opsional), atau chevron navigasi.
+/// dipakai di HalamanAcademic._TabMapel._buildList, HalamanPengaturan._LembarSampah._buildList
 class KartuMapel extends StatelessWidget {
   final String nama;
   final String? deskripsi;
@@ -50,7 +48,6 @@ class KartuMapel extends StatelessWidget {
           padding: const EdgeInsets.all(Jarak.j14),
           child: Row(
             children: [
-              // Penanda warna mapel.
               Container(
                 width: Ukuran.kotakMapel,
                 height: Ukuran.kotakMapel,
@@ -117,6 +114,7 @@ class KartuMapel extends StatelessWidget {
   }
 
   /// Membangun chip kecil (ikon + teks) untuk statistik materi/tugas.
+  /// dipakai di build
   Widget _chip(BuildContext c, IconData ikon, String teks) {
     final skema = Theme.of(c).colorScheme;
     return Row(

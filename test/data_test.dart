@@ -20,10 +20,10 @@ void main() {
     await Db.tutup();
   });
 
-  final mapelRepo = MapelRepositoryImpl();
-  final materiRepo = MateriRepositoryImpl();
-  final tugasRepo = TugasRepositoryImpl();
-  final pengaturanRepo = PengaturanRepositoryImpl();
+  final mapelRepo = MapelServiceImpl();
+    final materiRepo = MateriServiceImpl();
+    final tugasRepo = TugasServiceImpl();
+    final pengaturanRepo = PengaturanServiceImpl();
 
   group('Skema database', () {
     test('membuat 5 tabel yang benar', () async {

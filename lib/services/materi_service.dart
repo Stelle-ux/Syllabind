@@ -1,7 +1,7 @@
 import 'package:syllabind/function/materi.dart';
 
-/// Contract untuk repository Materi Pembelajaran.
-abstract class MateriRepository {
+/// Contract untuk service Materi Pembelajaran.
+abstract class MateriService {
   Future<int> tambah(Materi materi);
   Future<List<Materi>> perMapel(int mapelId, {bool termasukSampah = false});
   Future<List<Materi>> semua({bool hanyaDenganCatatan = false});
@@ -13,5 +13,6 @@ abstract class MateriRepository {
   Future<int> hapus(int id);
   Future<int> pulihkan(int id);
   Future<int> hapusPermanen(int id);
+  Future<int> hapusPermanenTugas(int id);
   Future<List<Materi>> cariKata(String kata);
 }

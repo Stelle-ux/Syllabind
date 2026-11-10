@@ -28,17 +28,17 @@ void main() {
     // platform yang tidak ada di Dart VM, jadi diarahkan ke folder proyek.
     akarUji = Directory(p.join(Directory.current.path, 'build', 'uji_tmp'));
     await akarUji.create(recursive: true);
-    LampiranRepositoryImpl.folderUji = akarUji;
+      LampiranServiceImpl.folderUji = akarUji;
   });
 
   tearDown(() async {
-    LampiranRepositoryImpl.folderUji = null;
+      LampiranServiceImpl.folderUji = null;
     await Db.tutup();
   });
 
-  final mapelRepo = MapelRepositoryImpl();
-  final materiRepo = MateriRepositoryImpl();
-  final lampiranRepo = LampiranRepositoryImpl();
+    final mapelRepo = MapelServiceImpl();
+    final materiRepo = MateriServiceImpl();
+    final lampiranRepo = LampiranServiceImpl();
 
   Future<int> buatMapel([String nama = 'Matematika']) =>
       mapelRepo.tambah(Mapel(nama: nama, warna: '#4C6FFF'));

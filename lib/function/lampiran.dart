@@ -1,11 +1,9 @@
 import 'package:syllabind/services/skema_db.dart';
 
 /// Entitas Lampiran (Attachment: Gambar atau File).
-///
-/// Tabel: `lampiran` ([SkemaDb.tabelLampiran]).
-/// Satu tabel untuk keduanya, dibedakan kolom `tipe` (GAMBAR/FILE).
-/// FK ke [Materi] dengan CASCADE on purge.
-/// File fisik disalin ke `app_documents/lampiran/` saat ditambah.
+/// Tabel: lampiran (SkemaDb.tabelLampiran). Satu tabel untuk keduanya, dibedakan kolom tipe (GAMBAR/FILE).
+/// FK ke Materi dengan CASCADE on purge. File fisik disalin ke app_documents/lampiran/ saat ditambah.
+/// dipakai di RepoLampiran, LayananHapus, HalamanDetailMapel._LembarLampiran, HalamanPenyimpanan
 class Lampiran {
   static const String tipeGambar = SkemaDb.tipeGambar;
   static const String tipeFile = SkemaDb.tipeFile;
@@ -29,9 +27,11 @@ class Lampiran {
   }) : createdAt = createdAt ?? DateTime.now();
 
   /// True jika tipe == GAMBAR.
+  /// dipakai di HalamanPenyimpanan._statistik, HalamanDetailMapel._LembarLampiran
   bool get gambar => tipe == tipeGambar;
 
   /// Ukuran dalam bentuk terbaca, mis. "1,4 MB".
+  /// dipakai di HalamanPenyimpanan._statistik, HalamanDetailMapel._LembarLampiran
   String get ukuranTerbaca {
     if (ukuranFile < 1024) return '$ukuranFile B';
     if (ukuranFile < 1024 * 1024) {
@@ -41,6 +41,7 @@ class Lampiran {
   }
 
   /// Mengubah ke Map untuk INSERT ke SQLite.
+  /// dipakai di RepoLampiran.tambahDariFile, RepoLampiran.catatanPenampung
   Map<String, Object?> toMap() => {
         if (id != null) 'id': id,
         'materi_id': materiId,
@@ -52,6 +53,7 @@ class Lampiran {
       };
 
   /// Membuat [Lampiran] dari baris hasil query SQLite.
+  /// dipakai di RepoLampiran.semua, RepoLampiran.perMateri, RepoLampiran.semuaLintasMapel
   factory Lampiran.fromMap(Map<String, Object?> m) => Lampiran(
         id: m['id'] as int?,
         materiId: m['materi_id'] as int,

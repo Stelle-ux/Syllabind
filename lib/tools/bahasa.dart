@@ -1,19 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Pusat bahasa aplikasi: **Indonesia** (bawaan) dan **Inggris**.
-///
-/// Kenapa tabel sendiri, bukan `flutter_localizations` + berkas ARB?
-///   - Aplikasi ini offline-first, hanya dua bahasa, dan seluruh teks
-///     antarmukanya ada di satu tempat. Menambah paket + berkas terpisah
-///     hanya untuk ini tidak sepadan.
-///   - Tidak ada dependensi baru, jadi tidak ada risiko build Android.
-///
-/// Cara pakai:
-///   `t('nav_library')`                     → teks sesuai bahasa aktif
-///   `tp('k_n_hari_lagi', {'n': '3'})`      → teks dengan penanda terisi
-///
-/// **Reused in:** [main.dart] (ValueListenableBuilder), [PengaturanPage._gantiBahasa], [komponen.dart] (t/tp calls everywhere), [layanan_ekspor.dart] (indirect via t/tp)
-/// **Calls:** [ValueNotifier]
+/// Pusat bahasa aplikasi: Indonesia (bawaan) dan Inggris.
+/// dipakai di main.dart (ValueListenableBuilder), HalamanPengaturan._gantiBahasa, komponen.dart (t/tp calls everywhere), layanan_ekspor.dart (indirect via t/tp)
 class Bahasa {
   Bahasa._();
 
@@ -21,51 +9,32 @@ class Bahasa {
   static const String en = 'en';
 
   /// Bahasa yang sedang aktif.
-  ///
-  /// Dibaca dari tabel `pengaturan` saat aplikasi dibuka, diubah dari
-  /// halaman Pengaturan. Karena ini [ValueNotifier], mengganti nilainya
-  /// langsung membangun ulang seluruh `MaterialApp` — tidak perlu restart.
-  ///
-  /// **Reused in:** [main.dart] (ValueListenableBuilder), [PengaturanPage._gantiBahasa], [t], [tp], [tanggalPendek], [tenggatRelatif]
-  /// **Calls:** [ValueNotifier]
+  /// dipakai di main.dart (ValueListenableBuilder), HalamanPengaturan._gantiBahasa, t, tp, tanggalPendek, tenggatRelatif
   static final ValueNotifier<String> aktif = ValueNotifier<String>(id);
 
-  /// `true` jika bahasa aktif adalah Inggris.
-  ///
-  /// **Reused in:** [t], [tp], [tanggalPendek], [tenggatRelatif], [PengaturanPage.build] (dropdown value)
+  /// true jika bahasa aktif adalah Inggris.
+  /// dipakai di t, tp, tanggalPendek, tenggatRelatif, HalamanPengaturan.build (dropdown value)
   static bool get inggris => aktif.value == en;
 
-  /// Menormalkan kode bahasa: apa pun selain `en` dianggap Indonesia.
-  ///
-  /// **Reused in:** [set], [PengaturanPage._gantiBahasa]
+  /// Menormalkan kode bahasa: apa pun selain en dianggap Indonesia.
+  /// dipakai di set, HalamanPengaturan._gantiBahasa
   static String normal(String? kode) => kode == en ? en : id;
 
   /// Mengubah bahasa aktif & memicu rebuild MaterialApp via ValueNotifier.
-  ///
-  /// **Reused in:** [PengaturanPage._gantiBahasa], [main.dart] (init)
-  /// **Calls:** [normal], [ValueNotifier.value]
+  /// dipakai di HalamanPengaturan._gantiBahasa, main.dart (init)
   static void set(String kode) => aktif.value = normal(kode);
 }
 
 /// Mengambil teks sesuai bahasa aktif.
-///
-/// Kunci yang tidak ada di tabel dikembalikan apa adanya, supaya salah ketik
-/// terlihat jelas di layar alih-alih menjadi teks kosong.
-///
-/// **Reused in:** EVERYWHERE (150+ call sites across all UI files)
-/// **Calls:** [_kamus], [Bahasa.inggris]
+/// dipakai di EVERYWHERE (150+ call sites across all UI files)
 String t(String kunci) {
   final baris = _kamus[kunci];
   if (baris == null) return kunci;
   return Bahasa.inggris ? baris[1] : baris[0];
 }
 
-/// Sama seperti [t], tetapi mengganti penanda `{nama}` dengan nilai.
-///
-/// Contoh: `tp('k_n_hari_lagi', {'n': '3'})` → "3 hari lagi".
-///
-/// **Reused in:** [komponen.dart] (konfirmasiHitungMundur, tenggatRelatif), [DetailMapelPage], [HomePage], [SampahPage], [PengaturanPage]
-/// **Calls:** [t], [Map.entries], [String.replaceAll]
+/// Sama seperti t, tetapi mengganti penanda {nama} dengan nilai.
+/// dipakai di komponen.dart (konfirmasiHitungMundur, tenggatRelatif), HalamanDetailMapel, HalamanHome, HalamanSampah, HalamanPengaturan
 String tp(String kunci, Map<String, String> ganti) {
   var teks = t(kunci);
   for (final e in ganti.entries) {
@@ -75,11 +44,7 @@ String tp(String kunci, Map<String, String> ganti) {
 }
 
 /// Tabel terjemahan.
-///
-/// Bentuk nilai: `[teks Indonesia, teks Inggris]`.
-/// Urutannya sengaja: Indonesia lebih dulu karena itu bahasa bawaan.
-///
-/// **Reused in:** [t] (read-only lookup)
+/// dipakai di t (read-only lookup)
 const Map<String, List<String>> _kamus = {
   // ── Navigasi & kerangka ──────────────────────────────────────
   'nav_home': ['Home', 'Home'],
@@ -253,8 +218,8 @@ const Map<String, List<String>> _kamus = {
   'ak_keterangan': ['Keterangan (opsional)', 'Description (optional)'],
   'ak_kosong_mapel': ['Belum ada mata pelajaran', 'No subjects yet'],
   'ak_kosong_mapel_pesan': [
-    'Tekan tombol + untuk menambah mapel pertama.',
-    'Tap the + button to add your first subject.',
+    'Tekan tombol Mapel untuk menambah mapel pertama.',
+    'Tap the Subject button to add your first subject.',
   ],
   'ak_kosong_mapel_tombol': ['Tambah Mapel', 'Add Subject'],
   'ak_mapel_fab': ['Mapel', 'Subject'],

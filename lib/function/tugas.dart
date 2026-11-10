@@ -1,10 +1,9 @@
 import 'package:syllabind/services/skema_db.dart';
 
 /// Entitas Tugas (Assignment dalam Mapel).
-///
-/// Tabel: `tugas` ([SkemaDb.tabelTugas]).
-/// Bisa punya tenggat (deadline) & status (BELUM/SELESAI).
-/// Soft delete via `deleted_at`. FK ke [Mapel] dengan CASCADE on purge.
+/// Tabel: tugas (SkemaDb.tabelTugas). Bisa punya tenggat (deadline) & status (BELUM/SELESAI).
+/// Soft delete via deleted_at. FK ke Mapel dengan CASCADE on purge.
+/// dipakai di RepoTugas, LayananHapus, HalamanHome, HalamanAcademic._TabTugas, HalamanDetailMapel._TabTugasMapel
 class Tugas {
   final int? id;
   final int mapelId;
@@ -35,36 +34,43 @@ class Tugas {
         updatedAt = updatedAt ?? DateTime.now();
 
   /// True jika tugas sudah dihapus lembut.
-  bool get terhapus => deletedAt != null;
+    /// dipakai di RepoTugas.semua, RepoTugas.perMapel, LayananHapus.hapusTugas
+    bool get terhapus => deletedAt != null;
 
-  /// True jika status == SELESAI.
-  bool get selesai => status == SkemaDb.statusSelesai;
+    /// True jika status == SELESAI.
+    /// dipakai di HalamanHome._barisTugas, HalamanAcademic._TabTugas, HalamanDetailMapel._TabTugasMapel
+    bool get selesai => status == SkemaDb.statusSelesai;
 
-  /// Sisa hari menuju tenggat. Negatif = sudah lewat. Null = tidak ada tenggat.
-  int? get sisaHari {
-    if (tenggat == null) return null;
-    final hariIni = DateTime.now();
-    final a = DateTime(hariIni.year, hariIni.month, hariIni.day);
-    final b = DateTime(tenggat!.year, tenggat!.month, tenggat!.day);
-    return b.difference(a).inDays;
-  }
+    /// Sisa hari menuju tenggat. Negatif = sudah lewat. Null = tidak ada tenggat.
+    /// dipakai di HalamanHome._barisTugas, HalamanAcademic._TabTugas, HalamanDetailMapel._TabTugasMapel
+    int? get sisaHari {
+      if (tenggat == null) return null;
+      final hariIni = DateTime.now();
+      final a = DateTime(hariIni.year, hariIni.month, hariIni.day);
+      final b = DateTime(tenggat!.year, tenggat!.month, tenggat!.day);
+      return b.difference(a).inDays;
+    }
 
-  /// True jika tenggat sudah lewat DAN status BELUM.
-  bool get lewatTenggat => sisaHari != null && sisaHari! < 0 && !selesai;
+    /// True jika tenggat sudah lewat DAN status BELUM.
+    /// dipakai di HalamanHome._barisTugas, HalamanAcademic._TabTugas, HalamanDetailMapel._TabTugasMapel
+    bool get lewatTenggat => sisaHari != null && sisaHari! < 0 && !selesai;
 
-  /// Membuat salinan dengan field yang diubah.
-  Tugas copyWith({
-    int? id,
-    int? mapelId,
-    String? judul,
-    String? deskripsi,
-    DateTime? tenggat,
-    bool hapusTenggat = false,
-    String? status,
-    DateTime? updatedAt,
-    DateTime? deletedAt,
-    bool hapusTandaDeletedAt = false,
-  }) {
+    /// Membuat salinan dengan field yang diubah.
+    /// hapusTenggat: true = set tenggat ke null (hapus deadline)
+    /// hapusTandaDeletedAt: true = set deletedAt ke null (pulihkan dari sampah)
+    /// dipakai di RepoTugas.ubah, RepoTugas.toggleStatus, RepoTugas.hapusLembut, RepoTugas.pulihkan
+    Tugas copyWith({
+      int? id,
+      int? mapelId,
+      String? judul,
+      String? deskripsi,
+      DateTime? tenggat,
+      bool hapusTenggat = false,
+      String? status,
+      DateTime? updatedAt,
+      DateTime? deletedAt,
+      bool hapusTandaDeletedAt = false,
+    }) {
     return Tugas(
       id: id ?? this.id,
       mapelId: mapelId ?? this.mapelId,
@@ -79,20 +85,22 @@ class Tugas {
   }
 
   /// Mengubah ke Map untuk INSERT/UPDATE ke SQLite.
-  Map<String, Object?> toMap() => {
-        if (id != null) 'id': id,
-        'mapel_id': mapelId,
-        'judul': judul,
-        'deskripsi': deskripsi,
-        'tenggat': tenggat?.toIso8601String(),
-        'status': status,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
-        'deleted_at': deletedAt?.toIso8601String(),
-      };
+    /// dipakai di RepoTugas.tambah, RepoTugas.ubah, RepoTugas.toggleStatus, RepoTugas.hapusLembut, RepoTugas.pulihkan
+    Map<String, Object?> toMap() => {
+          if (id != null) 'id': id,
+          'mapel_id': mapelId,
+          'judul': judul,
+          'deskripsi': deskripsi,
+          'tenggat': tenggat?.toIso8601String(),
+          'status': status,
+          'created_at': createdAt.toIso8601String(),
+          'updated_at': updatedAt.toIso8601String(),
+          'deleted_at': deletedAt?.toIso8601String(),
+        };
 
-  /// Membuat [Tugas] dari baris hasil query SQLite.
-  factory Tugas.fromMap(Map<String, Object?> m) => Tugas(
+    /// Membuat [Tugas] dari baris hasil query SQLite.
+    /// dipakai di RepoTugas.semua, RepoTugas.satu, RepoTugas.perMapel, RepoTugas.akanDatang, RepoTugas.lewatTenggat, RepoTugas.ringkasan, RepoTugas.cari
+    factory Tugas.fromMap(Map<String, Object?> m) => Tugas(
         id: m['id'] as int?,
         mapelId: m['mapel_id'] as int,
         judul: m['judul'] as String,

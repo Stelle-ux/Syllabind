@@ -5,11 +5,7 @@ import 'package:syllabind/tools/tema.dart';
 import 'package:syllabind/tools/tokens.dart';
 
 /// Dialog konfirmasi hapus dengan hitung mundur 5 detik.
-///
-/// Tombol "Hapus" terkunci selama hitung mundur. Ini pertahanan lapis
-/// pertama; lapis kedua adalah Sampah (`deleted_at`).
-///
-/// Returns: `true` jika user menekan Hapus setelah hitung mundur, `false` jika batal/dismiss.
+/// dipakai di HalamanAcademic._hapusMapel, HalamanDetailMapel._hapusMapel
 Future<bool> konfirmasiHitungMundur(
   BuildContext context, {
   required String judul,

@@ -39,10 +39,10 @@ void main() {
   Future<void> isiDataContoh() async {
     await Db.reset();
 
-    final mapelRepo = MapelRepositoryImpl();
-    final materiRepo = MateriRepositoryImpl();
-    final tugasRepo = TugasRepositoryImpl();
-    final pengaturan = PengaturanRepositoryImpl();
+      final mapelRepo = MapelServiceImpl();
+      final materiRepo = MateriServiceImpl();
+      final tugasRepo = TugasServiceImpl();
+      final pengaturan = PengaturanServiceImpl();
 
     await pengaturan.setTema('terang');
     await pengaturan.setWarnaAksen('#2F6F6B');

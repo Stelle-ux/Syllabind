@@ -54,7 +54,7 @@ void main() {
     });
 
     test('warna tersimpan saat mapel ditambah dan terbaca lagi', () async {
-      final repo = MapelRepositoryImpl();
+          final repo = MapelServiceImpl();
       final id = await repo.tambah(
         Mapel(nama: 'Matematika', warna: '#7C3AED'),
       );
@@ -69,7 +69,7 @@ void main() {
     });
 
     test('mapel tanpa warna memakai warna tema', () async {
-      final repo = MapelRepositoryImpl();
+          final repo = MapelServiceImpl();
       final id = await repo.tambah(Mapel(nama: 'Fisika'));
 
       final lagi = await repo.cari(id);
@@ -82,7 +82,7 @@ void main() {
     });
 
     test('warna bisa diganti lewat ubah()', () async {
-      final repo = MapelRepositoryImpl();
+          final repo = MapelServiceImpl();
       final id = await repo.tambah(
         Mapel(nama: 'Kimia', warna: '#2563EB'),
       );
@@ -95,7 +95,7 @@ void main() {
     });
 
     test('hapusTandaWarna mengosongkan warna kembali ke tema', () async {
-      final repo = MapelRepositoryImpl();
+          final repo = MapelServiceImpl();
       final id = await repo.tambah(
         Mapel(nama: 'Biologi', warna: '#16A34A'),
       );
@@ -115,7 +115,7 @@ void main() {
     });
 
     test('ubah nama tidak menghilangkan warna', () async {
-      final repo = MapelRepositoryImpl();
+          final repo = MapelServiceImpl();
       final id = await repo.tambah(
         Mapel(nama: 'Sejarah', warna: '#D97706'),
       );
@@ -133,8 +133,8 @@ void main() {
 
   group('Tandai selesai dari Home', () {
     Future<Tugas> siapkanTugas() async {
-      final mapelId = await MapelRepositoryImpl().tambah(Mapel(nama: 'Matematika'));
-      final repo = TugasRepositoryImpl();
+          final mapelId = await MapelServiceImpl().tambah(Mapel(nama: 'Matematika'));
+          final repo = TugasServiceImpl();
       final id = await repo.tambah(
         Tugas(
           mapelId: mapelId,
@@ -153,16 +153,16 @@ void main() {
 
     test('ubahStatus menandai selesai dan bertahan di database', () async {
       final tg = await siapkanTugas();
-      await TugasRepositoryImpl().ubahStatus(tg.id!, SkemaDb.statusSelesai);
+          await TugasServiceImpl().ubahStatus(tg.id!, SkemaDb.statusSelesai);
 
-      final lagi = await TugasRepositoryImpl().cari(tg.id!);
+          final lagi = await TugasServiceImpl().cari(tg.id!);
       expect(lagi!.selesai, isTrue);
       expect(lagi.status, SkemaDb.statusSelesai);
     });
 
     test('tanda selesai bisa diurungkan', () async {
       final tg = await siapkanTugas();
-      final repo = TugasRepositoryImpl();
+          final repo = TugasServiceImpl();
 
       await repo.ubahStatus(tg.id!, SkemaDb.statusSelesai);
       expect((await repo.cari(tg.id!))!.selesai, isTrue);
@@ -173,7 +173,7 @@ void main() {
 
     test('tugas selesai keluar dari daftar tenggat terdekat Home', () async {
       final tg = await siapkanTugas();
-      final repo = TugasRepositoryImpl();
+          final repo = TugasServiceImpl();
 
       expect((await repo.tenggatTerdekat()).length, 1);
 
@@ -187,7 +187,7 @@ void main() {
 
     test('ringkasan Home ikut bergeser setelah ditandai selesai', () async {
       final tg = await siapkanTugas();
-      final repo = TugasRepositoryImpl();
+          final repo = TugasServiceImpl();
 
       var r = await repo.ringkasan();
       expect(r.belum, 1);
@@ -203,8 +203,8 @@ void main() {
 
     test('tugas lewat tenggat yang ditandai selesai tidak lagi dihitung lewat',
         () async {
-      final mapelId = await MapelRepositoryImpl().tambah(Mapel(nama: 'Fisika'));
-      final repo = TugasRepositoryImpl();
+          final mapelId = await MapelServiceImpl().tambah(Mapel(nama: 'Fisika'));
+          final repo = TugasServiceImpl();
       final id = await repo.tambah(
         Tugas(
           mapelId: mapelId,

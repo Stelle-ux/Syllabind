@@ -4,20 +4,11 @@ import 'package:syllabind/function/mapel.dart';
 import 'package:syllabind/services/index.dart';
 import 'package:syllabind/tools/index.dart';
 
-/// Halaman 4 — Pengaturan.
-///
-/// 5 kelompok (bukan halaman kosong):
-///   1. Tampilan  — tema terang/gelap/ikuti sistem
-///   2. Warna     — warna aksen aplikasi
-///   3. Data      — ekspor .txt
-///   4. Pemulihan — Sampah (lihat & pulihkan yang terhapus)
-///   5. Tentang   — nama app, versi, mata ujian
-///
-/// **Reused in:** [main.dart] (NavigationBar index 3)
-/// **Calls:** [_HalamanPengaturanState]
+/// Halaman 4 — Pengaturan (tema, bahasa, warna aksen, sampah, tentang).
+/// dipakai di main.dart
 class HalamanPengaturan extends StatefulWidget {
-  /// Callback opsional dipanggil saat data berubah (tema, bahasa, aksen, sampah).
-  /// Digunakan oleh [main.dart] untuk memicu rebuild MaterialApp.
+  /// Callback saat pengaturan berubah, memicu rebuild MaterialApp.
+  /// dipakai di main.dart
   final VoidCallback? onDataBerubah;
 
   const HalamanPengaturan({super.key, this.onDataBerubah});
@@ -26,21 +17,11 @@ class HalamanPengaturan extends StatefulWidget {
   State<HalamanPengaturan> createState() => _HalamanPengaturanState();
 }
 
-/// State untuk [HalamanPengaturan].
-///
-/// Mengelola:
-/// - Pengaturan tema (_mode: sistem/terang/gelap) via [PengaturanRepository]
-/// - Warna aksen (_aksen) via [PengaturanRepository] + [TemaApp.palet]
-/// - Bahasa (_bahasa) via [PengaturanRepository] + [Bahasa]
-/// - Jumlah item di Sampah (_jumlahSampah) via [MapelRepository.isiSampah]
-/// - 5 section UI: Tampilan, Bahasa, Warna, Pemulihan, Tentang
-/// - Bottom sheet Sampah ([_LembarSampah]) dengan pulihkan/hapus permanen
-///
-/// **Reused in:** [HalamanPengaturan.createState]
-/// **Calls:** [PengaturanRepository], [MapelRepository], [LayananHapus], [TemaApp], [Bahasa], [_LembarSampah], [konfirmasi], [pesanSukses], [t], [tp], [tanggalPendek]
+/// State untuk HalamanPengaturan.
+/// dipakai di HalamanPengaturan.createState
 class _HalamanPengaturanState extends State<HalamanPengaturan> {
-  final _repo = PengaturanRepositoryImpl();
-  final _mapelRepo = MapelRepositoryImpl();
+  final _repo = PengaturanServiceImpl();
+  final _mapelRepo = MapelServiceImpl();
   late final LayananHapus _hapus;
 
   String _mode = 'sistem';
@@ -54,18 +35,15 @@ class _HalamanPengaturanState extends State<HalamanPengaturan> {
     super.initState();
     _hapus = LayananHapus(
       mapelRepo: _mapelRepo,
-      materiRepo: MateriRepositoryImpl(),
-      lampiranRepo: LampiranRepositoryImpl(),
+      materiRepo: MateriServiceImpl(),
+      tugasRepo: TugasServiceImpl(),
+      lampiranRepo: LampiranServiceImpl(),
     );
     _muatkan();
   }
 
-  /// Memuat semua pengaturan dari repo + hitung sampah.
-  ///
-  /// Dipanggil di initState dan setelah aksi di Sampah (pulihkan/hapus permanen).
-  ///
-  /// **Reused in:** [initState], [_bukaLamanSampah] (after bottom sheet closes)
-  /// **Calls:** [PengaturanRepository.tema], [PengaturanRepository.warnaAksen], [PengaturanRepository.bahasa], [MapelRepository.isiSampah], [setState]
+  /// Memuat pengaturan (tema, bahasa, aksen) dan jumlah sampah.
+  /// dipakai di initState, _bukaLamanSampah
   Future<void> _muatkan() async {
     final mode = await _repo.tema();
     final aksen = await _repo.warnaAksen();
@@ -94,9 +72,6 @@ class _HalamanPengaturanState extends State<HalamanPengaturan> {
       children: [
         // 1. Tampilan
         _bagian(t('set_tampilan')),
-        // Sejak Flutter 3.32, `groupValue`/`onChanged` pada RadioListTile
-        // sudah usang: nilainya dipindah ke satu pembungkus `RadioGroup`.
-        // Perilakunya sama; hanya lokasi nilainya yang berpindah.
         RadioGroup<String>(
           groupValue: _mode,
           onChanged: _ubahMode,
@@ -151,7 +126,12 @@ class _HalamanPengaturanState extends State<HalamanPengaturan> {
         // 3. Warna aksen
         _bagian(t('set_warna')),
         Padding(
-          padding: const EdgeInsets.fromLTRB(Jarak.j16, Jarak.j4, Jarak.j16, Jarak.j8),
+          padding: const EdgeInsets.fromLTRB(
+            Jarak.j16,
+            Jarak.j4,
+            Jarak.j16,
+            Jarak.j8,
+          ),
           child: Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -192,30 +172,28 @@ class _HalamanPengaturanState extends State<HalamanPengaturan> {
   }
 
   /// Widget header section (judul uppercase dengan styling konsisten).
-  ///
-  /// **Reused in:** [build] (5x untuk setiap section)
-  /// **Calls:** [Text], [Theme.of], [TextStyle.copyWith]
+  /// dipakai di build
   Widget _bagian(String judul) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(Jarak.j16, Jarak.j14, Jarak.j16, Jarak.j6),
+      padding: const EdgeInsets.fromLTRB(
+        Jarak.j16,
+        Jarak.j14,
+        Jarak.j16,
+        Jarak.j6,
+      ),
       child: Text(
         judul.toUpperCase(),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.6,
-            ),
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+        ),
       ),
     );
   }
 
   /// Bulat warna aksen untuk grid pilihan warna.
-  ///
-  /// Menampilkan lingkaran 46dp dengan border tebal saat aktif,
-  /// ikon check putih di tengah. onTap → simpan ke repo + setState + callback.
-  ///
-  /// **Reused in:** [build] (Wrap children dari TemaApp.palet.entries)
-  /// **Calls:** [Tooltip], [InkWell], [PengaturanRepository.setWarnaAksen], [setState], [widget.onDataBerubah], [TemaApp.dariHex], [Theme.of]
+  /// dipakai di build
   Widget _bulatWarna(String label, String hex) {
     final aktif = _aksen.toUpperCase() == hex.toUpperCase();
     final warna = TemaApp.dariHex(hex);
@@ -252,29 +230,16 @@ class _HalamanPengaturanState extends State<HalamanPengaturan> {
   }
 
   /// Mengubah bahasa aplikasi dan memicu rebuild global.
-  ///
-  /// Simpan ke [PengaturanRepository.setBahasa], update state lokal,
-  /// panggil [widget.onDataBerubah] supaya [main.dart] rebuild MaterialApp
-  /// dengan [Bahasa.notifier] value baru.
-  ///
-  /// **Reused in:** [build] (DropdownButton onChanged)
-  /// **Calls:** [PengaturanRepository.setBahasa], [setState], [widget.onDataBerubah]
+  /// dipakai di build
   Future<void> _ubahBahasa(String v) async {
     await _repo.setBahasa(v);
     if (!mounted) return;
     setState(() => _bahasa = v);
-    // Beri tahu kerangka aplikasi supaya seluruh teks langsung berganti.
     widget.onDataBerubah?.call();
   }
 
   /// Mengubah mode tema (sistem/terang/gelap) dan memicu rebuild global.
-  ///
-  /// Simpan ke [PengaturanRepository.setTema], update state lokal,
-  /// panggil [widget.onDataBerubah] supaya [main.dart] rebuild MaterialApp
-  /// dengan [TemaApp] yang sesuai.
-  ///
-  /// **Reused in:** [build] (RadioListTile onChanged x3)
-  /// **Calls:** [PengaturanRepository.setTema], [setState], [widget.onDataBerubah]
+  /// dipakai di build
   Future<void> _ubahMode(String? v) async {
     if (v == null) return;
     await _repo.setTema(v);
@@ -284,12 +249,7 @@ class _HalamanPengaturanState extends State<HalamanPengaturan> {
   }
 
   /// Membuka bottom sheet Sampah (isScrollControlled=true untuk full height).
-  ///
-  /// Meneruskan [LayananHapus] dan callback refresh ke [_LembarSampah].
-  /// Setelah tutup, panggil [_muatkan] untuk update jumlah sampah.
-  ///
-  /// **Reused in:** [build] (ListTile onTap Sampah)
-  /// **Calls:** [showModalBottomSheet], [_LembarSampah], [_muatkan]
+  /// dipakai di build
   Future<void> _bukaLamanSampah() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -312,15 +272,7 @@ class _HalamanPengaturanState extends State<HalamanPengaturan> {
 // ─────────────────────────────────────────────────────────────
 
 /// Bottom sheet untuk mengelola Sampah (mapel terhapus lunak).
-///
-/// Menampilkan daftar mapel di sampah dengan tombol:
-/// - Pulihkan → [LayananHapus.mapel.pulihkan]
-/// - Hapus permanen → [LayananHapus.mapelPermanen] (dengan konfirmasi)
-///
-/// Auto-refresh setelah aksi via callback [onBerubah].
-///
-/// **Reused in:** [_HalamanPengaturanState._bukaLamanSampah]
-/// **Calls:** [LayananHapus.mapel.isiSampah], [LayananHapus.mapel.pulihkan], [LayananHapus.mapelPermanen], [konfirmasi], [pesanSukses], [tanggalPendek], [t]
+/// dipakai di _HalamanPengaturanState._bukaLamanSampah
 class _LembarSampah extends StatefulWidget {
   final LayananHapus hapus;
   final VoidCallback onBerubah;
@@ -331,32 +283,32 @@ class _LembarSampah extends StatefulWidget {
   State<_LembarSampah> createState() => _LembarSampahState();
 }
 
-/// State untuk [_LembarSampah].
-///
-/// Mengelola:
-/// - Future daftar sampah (_future) yang disegarkan setelah aksi
-/// - ListView dengan Card per mapel (nama, tanggal dihapus, 2 tombol aksi)
-///
-/// **Reused in:** [_LembarSampah.createState]
-/// **Calls:** [LayananHapus.mapel.isiSampah], [LayananHapus.mapel.pulihkan], [LayananHapus.mapelPermanen], [konfirmasi], [pesanSukses], [tanggalPendek], [setState]
+/// State untuk _LembarSampah.
+/// dipakai di _LembarSampah.createState
 class _LembarSampahState extends State<_LembarSampah> {
-  late Future<List<Mapel>> _future;
+  /// Daftar mapel di Sampah — disimpan di State (bukan Future) supaya tinggi
+  /// tata letak terbatas dan tidak memicu "unbounded height" pada Column.
+  /// dipakai di build, _barSeleksiSampah, _pilihSemuaSampah
+  List<Mapel> _data = [];
+  bool _muat = true;
   bool _modeSeleksi = false;
   final Set<int> _terpilih = {};
 
   @override
   void initState() {
     super.initState();
-    _future = widget.hapus.mapel.isiSampah();
+    _segarkan();
   }
 
   /// Memuat ulang daftar sampah (dipanggil setelah pulihkan/hapus permanen).
-  ///
-  /// **Reused in:** [build] (TextButton onPressed Pulihkan, IconButton onPressed Hapus permanen)
-  /// **Calls:** [LayasanHapus.mapel.isiSampah], [setState]
-  void _segarkan() {
+  /// dipakai di initState, build, _hapusPermanenTerpilih
+  Future<void> _segarkan() async {
+    setState(() => _muat = true);
+    final d = await widget.hapus.mapel.isiSampah();
+    if (!mounted) return;
     setState(() {
-      _future = widget.hapus.mapel.isiSampah();
+      _data = d;
+      _muat = false;
       _terpilih.clear();
       _modeSeleksi = false;
     });
@@ -365,129 +317,133 @@ class _LembarSampahState extends State<_LembarSampah> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(Jarak.j16, 0, Jarak.j16, Jarak.j16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              t('set_sampah'),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: Jarak.j4),
-            Text(
-              t('sampah_ket'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: Jarak.j14),
-            FutureBuilder<List<Mapel>>(
-              future: _future,
-              builder: (context, snap) {
-                if (snap.connectionState != ConnectionState.done) {
-                  return const Padding(
-                    padding: EdgeInsets.all(Jarak.j24),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                final data = snap.data ?? [];
-                if (data.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: Jarak.j24),
-                    child: Text(t('sampah_kosong')),
-                  );
-                }
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (!_modeSeleksi) ...[
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => setState(() => _modeSeleksi = true),
-                          child: Text(t('sampah_mulai_pilih')),
+      child: SizedBox(
+        // Tinggi tetap (70% layar) supaya lembar tidak memenuhi seluruh layar,
+        // tetapi daftar tetap bisa digulir saat isi Sampah banyak.
+        height: MediaQuery.sizeOf(context).height * 0.7,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Jarak.j16,
+            0,
+            Jarak.j16,
+            Jarak.j16,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                t('set_sampah'),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: Jarak.j4),
+              Text(
+                t('sampah_ket'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: Jarak.j14),
+              Expanded(
+                child: _muat
+                    ? const Center(child: CircularProgressIndicator())
+                    : _data.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: Jarak.j24,
                         ),
-                      ),
-                      const SizedBox(height: Jarak.j8),
-                    ],
-                    if (_modeSeleksi) ...[
-                      _barSeleksiSampah(data),
-                      const SizedBox(height: Jarak.j8),
-                    ],
-                    Expanded(
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: data.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: Jarak.j8),
-                        itemBuilder: (_, i) {
-                          final m = data[i];
-                          final sudahDipilih = _terpilih.contains(m.id);
-                          return Card(
-                            child: ListTile(
-                              title: Text(m.nama),
-                              subtitle: Text(
-                                m.deletedAt == null
-                                    ? 'Dihapus'
-                                    : 'Dihapus ${tanggalPendek(m.deletedAt!)}',
+                        child: Text(t('sampah_kosong')),
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!_modeSeleksi) ...[
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () =>
+                                    setState(() => _modeSeleksi = true),
+                                child: Text(t('sampah_mulai_pilih')),
                               ),
-                              trailing: _modeSeleksi
-                                  ? Checkbox(
-                                      value: sudahDipilih,
-                                      onChanged: (v) =>
-                                          _pilihSampah(m.id!, v ?? false),
-                                      materialTapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    )
-                                  : Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        TextButton(
-                                          onPressed: () async {
-                                            await widget.hapus.mapel
-                                                .pulihkan(m.id!);
-                                            _segarkan();
-                                            widget.onBerubah();
-                                          },
-                                          child: Text(t('pulihkan')),
-                                        ),
-                                        IconButton(
-                                          tooltip: t('sampah_hapus_permanen'),
-                                          icon: Icon(
-                                            Icons.delete_forever,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .error,
-                                          ),
-                                          onPressed: () => _hapusPermanen(m),
-                                        ),
-                                      ],
-                                    ),
-                              onTap: _modeSeleksi
-                                  ? () => _pilihSampah(m.id!, !sudahDipilih)
-                                  : null,
                             ),
-                          );
-                        },
+                            const SizedBox(height: Jarak.j8),
+                          ],
+                          if (_modeSeleksi) ...[
+                            _barSeleksiSampah(_data),
+                            const SizedBox(height: Jarak.j8),
+                          ],
+                          Expanded(
+                            child: ListView.separated(
+                              itemCount: _data.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: Jarak.j8),
+                              itemBuilder: (_, i) {
+                                final m = _data[i];
+                                final sudahDipilih =
+                                    m.id != null && _terpilih.contains(m.id);
+                                return Card(
+                                  child: ListTile(
+                                    title: Text(m.nama),
+                                    subtitle: Text(
+                                      m.deletedAt == null
+                                          ? 'Dihapus'
+                                          : 'Dihapus ${tanggalPendek(m.deletedAt!)}',
+                                    ),
+                                    trailing: _modeSeleksi
+                                        ? Checkbox(
+                                            value: sudahDipilih,
+                                            onChanged: (v) =>
+                                                _pilihSampah(m.id!, v ?? false),
+                                            materialTapTargetSize:
+                                                MaterialTapTargetSize
+                                                    .shrinkWrap,
+                                          )
+                                        : Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              TextButton(
+                                                onPressed: () async {
+                                                  await widget.hapus.mapel
+                                                      .pulihkan(m.id!);
+                                                  if (!mounted) return;
+                                                  await _segarkan();
+                                                  widget.onBerubah();
+                                                },
+                                                child: Text(t('pulihkan')),
+                                              ),
+                                              IconButton(
+                                                tooltip: t(
+                                                  'sampah_hapus_permanen',
+                                                ),
+                                                icon: Icon(
+                                                  Icons.delete_forever,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .error,
+                                                ),
+                                                onPressed: () =>
+                                                    _hapusPermanen(m),
+                                              ),
+                                            ],
+                                          ),
+                                    onTap: _modeSeleksi
+                                        ? () =>
+                                              _pilihSampah(m.id!, !sudahDipilih)
+                                        : null,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   /// Konfirmasi & hapus permanen mapel dari Sampah.
-  ///
-  /// Menampilkan dialog [konfirmasi] dengan peringatan detail:
-  /// semua catatan, tugas, lampiran + file ikut terhapus, TIDAK bisa pulihkan.
-  /// Panggil [LayananHapus.mapelPermanen] (file-first lalu DB via CASCADE).
-  /// Tampilkan [pesanSukses], segarkan, callback [onBerubah].
-  ///
-  /// **Reused in:** [build] (IconButton onPressed Hapus permanen)
-  /// **Calls:** [konfirmasi], [LayananHapus.mapelPermanen], [_segarkan], [widget.onBerubah], [pesanSukses]
+  /// dipakai di build:xxx
   Future<void> _hapusPermanen(Mapel m) async {
     final ya = await konfirmasi(
       context,
@@ -499,17 +455,24 @@ class _LembarSampahState extends State<_LembarSampah> {
 
     await widget.hapus.mapelPermanen(m.id!);
     if (!mounted) return;
-    _segarkan();
+    await _segarkan();
     widget.onBerubah();
     pesanSukses(context, tp('sampah_berhasil', {'nama': m.nama}));
   }
 
   /// Bar kontrol mode seleksi Sampah: jumlah terpilih, pilih semua/batal, dan tombol hapus permanen.
+  /// dipakai di build:xxx
   Widget _barSeleksiSampah(List<Mapel> data) {
-    final semuaTerpilih = data.isNotEmpty &&
+    final semuaTerpilih =
+        data.isNotEmpty &&
         data.every((m) => m.id != null && _terpilih.contains(m.id!));
     return Padding(
-      padding: const EdgeInsets.fromLTRB(Jarak.j14, Jarak.j4, Jarak.j14, Jarak.j4),
+      padding: const EdgeInsets.fromLTRB(
+        Jarak.j14,
+        Jarak.j4,
+        Jarak.j14,
+        Jarak.j4,
+      ),
       child: Wrap(
         spacing: Jarak.j8,
         runSpacing: Jarak.j8,
@@ -549,6 +512,7 @@ class _LembarSampahState extends State<_LembarSampah> {
   }
 
   /// Tambah atau hapus [id] dari pilihan Sampah.
+  /// dipakai di build
   void _pilihSampah(int id, bool dipilih) {
     setState(() {
       if (dipilih) {
@@ -559,19 +523,18 @@ class _LembarSampahState extends State<_LembarSampah> {
     });
   }
 
-  /// Pilih semua mapel di Sampah.
+  /// Pilih semua mapel di Sampah (dari data yang sudah dimuat).
+  /// dipakai di _barSeleksiSampah
   void _pilihSemuaSampah() {
     setState(() {
-      _future = widget.hapus.mapel.isiSampah().then((semua) {
-        for (final m in semua) {
-          if (m.id != null) _terpilih.add(m.id!);
-        }
-        return semua;
-      });
+      for (final m in _data) {
+        if (m.id != null) _terpilih.add(m.id!);
+      }
     });
   }
 
   /// Kosongkan semua pilihan Sampah dan keluar mode seleksi.
+  /// dipakai di _barSeleksiSampah
   void _batalPilihSemuaSampah() {
     setState(() {
       _terpilih.clear();
@@ -582,11 +545,13 @@ class _LembarSampahState extends State<_LembarSampah> {
   /// Konfirmasi lalu hapus permanen semua mapel terpilih dari Sampah.
   ///
   /// Menggunakan [konfirmasiHitungMundur] dengan hitung mundur 5 detik.
+  /// dipakai di _barSeleksiSampah
   Future<void> _hapusPermanenTerpilih() async {
     final lanjut = await konfirmasiHitungMundur(
       context,
-      judul: tp('sampah_konfirmasi_hapus_permanen_banyak',
-          {'n': '${_terpilih.length}'}),
+      judul: tp('sampah_konfirmasi_hapus_permanen_banyak', {
+        'n': '${_terpilih.length}',
+      }),
       rincian: [
         t('sampah_konfirmasi_hapus_permanen_banyak_pesan'),
         t('sampah_konfirmasi_pesan'),
@@ -598,9 +563,8 @@ class _LembarSampahState extends State<_LembarSampah> {
       await widget.hapus.mapelPermanen(id);
     }
     final jumlah = _terpilih.length;
-    _terpilih.clear();
-    setState(() => _modeSeleksi = false);
-    _segarkan();
+    if (!mounted) return;
+    await _segarkan();
     widget.onBerubah();
     if (!mounted) return;
     pesanSukses(

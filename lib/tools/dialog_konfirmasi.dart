@@ -5,9 +5,7 @@ import 'package:syllabind/tools/tema.dart';
 import 'package:syllabind/tools/tokens.dart';
 
 /// Dialog konfirmasi sederhana (Ya/Tidak) untuk hapus item non-mapel.
-///
-/// Digunakan untuk: hapus materi, hapus tugas, hapus lampiran, kosongkan sampah.
-/// Beda dengan [konfirmasiHitungMundur] yang dipakai untuk hapus Mapel (karena cascade).
+/// dipakai di HalamanDetailMapel._TabMateri._hapusMateri, HalamanDetailMapel._TabTugasMapel._hapusTugas, HalamanDetailMapel._LembarLampiran._hapusLampiran, HalamanPenyimpanan._hapusLampiran, HalamanPengaturan._LembarSampah._bersihkanOtomatis
 Future<bool> konfirmasi(
   BuildContext context, {
   required String judul,

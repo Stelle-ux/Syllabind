@@ -5,8 +5,7 @@ import 'package:syllabind/tools/tema.dart';
 import 'package:syllabind/tools/tokens.dart';
 
 /// Keadaan kosong yang seragam (empty state).
-///
-/// Dipakai saat daftar materi/tugas/sampah kosong. Bisa sertakan tombol aksi.
+/// dipakai di HalamanAcademic._TabCatatan, HalamanAcademic._TabTugas, HalamanDetailMapel._TabMateri, HalamanDetailMapel._TabTugasMapel, HalamanPengaturan._LembarSampah, HalamanPenyimpanan
 class Kosong extends StatelessWidget {
   final IconData ikon;
   final String judul;
@@ -27,14 +26,6 @@ class Kosong extends StatelessWidget {
   Widget build(BuildContext context) {
     final skema = Theme.of(context).colorScheme;
 
-    // Dulu widget ini selalu memakai padding 32 dan `Column` biasa. Begitu ia
-    // diletakkan di dalam kolom bertinggi tetap (mis. di bawah header Library
-    // yang berisi kartu statistik + kotak cari + filter), tingginya melebihi
-    // ruang yang tersisa dan RenderFlex meluber 44 px.
-    //
-    // Sekarang: padding menyusut saat ruang sempit, dan isinya bisa digulir
-    // sebagai jaring pengaman. Saat ruangnya lega, tata letaknya sama persis
-    // seperti sebelumnya (terpusat) — jadi tampilan halaman penuh tidak berubah.
     return LayoutBuilder(
       builder: (context, batas) {
         final sempit = batas.maxHeight.isFinite && batas.maxHeight < 260;

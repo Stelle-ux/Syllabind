@@ -1,6 +1,6 @@
 /// Hasil ringkasan tugas untuk halaman Home.
-///
-/// Bukan entitas tabel — dihitung oleh [TugasRepository.ringkasan] via query agregat.
+/// Bukan entitas tabel — dihitung oleh RepoTugas.ringkasan via query agregat.
+/// dipakai di HalamanHome._segarkan, HalamanHome._angka
 class RingkasanTugas {
   final int belum;
   final int selesai;
@@ -13,5 +13,6 @@ class RingkasanTugas {
   });
 
   /// Total tugas aktif (belum + selesai).
+  /// dipakai di HalamanHome._angka
   int get total => belum + selesai;
 }

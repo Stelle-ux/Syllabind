@@ -3,21 +3,19 @@ import 'package:sqflite/sqflite.dart';
 import 'package:syllabind/services/db.dart';
 import 'package:syllabind/services/skema_db.dart';
 import 'package:syllabind/function/mapel.dart';
-import 'package:syllabind/services/mapel_repository.dart';
+import 'package:syllabind/services/mapel_service.dart';
 
-/// Implementasi repository Mata Pelajaran (Subject).
-///
+/// Implementasi service Mata Pelajaran (Subject).
 /// Mengelola CRUD + soft delete + Sampah + hitungan subquery.
-/// Tabel: `mata_pelajaran` ([SkemaDb.tabelMapel]).
-///
-/// Aturan hapus:
-///   - `hapusLembut()`  → isi `deleted_at`; hilang dari daftar, masih di Sampah.
-///   - `pulihkan()`     → kosongkan `deleted_at`; kembali ke daftar.
-///   - `hapusPermanen()` → hapus baris + CASCADE ke materi/tugas/lampiran.
-class MapelRepositoryImpl implements MapelRepository {
+/// Tabel: mata_pelajaran (SkemaDb.tabelMapel).
+/// Aturan hapus: hapusLembut() → isi deleted_at; pulihkan() → kosongkan deleted_at; hapusPermanen() → hapus baris + CASCADE ke materi/tugas/lampiran.
+/// dipakai di HalamanHome, HalamanAcademic, HalamanDetailMapel, HalamanPengaturan, LayananHapus, LayananEkspor
+/// panggil Db.instance, SkemaDb.tabelMapel, Mapel.toMap, Mapel.fromMap, Mapel.copyWith
+class MapelServiceImpl implements MapelService {
   /// Menambah mata pelajaran baru.
-  ///
-  /// Returns: `id` baris yang baru disisipkan (AUTOINCREMENT).
+  /// Returns: id baris yang baru disisipkan (AUTOINCREMENT).
+  /// dipakai di HalamanAcademic._tambahMapel, HalamanDetailMapel._tambahMateri
+  /// panggil Db.instance, Mapel.toMap
   @override
   Future<int> tambah(Mapel mapel) async {
     final db = await Db.instance();
@@ -25,12 +23,11 @@ class MapelRepositoryImpl implements MapelRepository {
   }
 
   /// Semua mapel aktif, lengkap dengan jumlah materi dan tugas.
-  ///
-  /// Hitungan memakai subquery sehingga tidak perlu query tambahan per kartu
-  /// (menghindari N+1) dan langsung akurat di daftar Academic.
-  /// Parameter [termasukSampah]: `true` untuk ambil semua (termasuk terhapus).
-  ///
-  /// Returns: List [Mapel] urut nama A-Z (case-insensitive).
+  /// Hitungan memakai subquery biar gak perlu query tambahan per kartu (hindari N+1) dan langsung akurat di daftar Academic.
+  /// Parameter termasukSampah: true untuk ambil semua (termasuk terhapus).
+  /// Returns: List Mapel urut nama A-Z (case-insensitive).
+  /// dipakai di HalamanHome._segarkan, HalamanAcademic._segarkan, HalamanDetailMapel._segarkan, HalamanPengaturan._muat
+  /// panggil Db.instance, Mapel.fromMap
   @override
   Future<List<Mapel>> semua({bool termasukSampah = false}) async {
     final db = await Db.instance();
@@ -48,6 +45,8 @@ class MapelRepositoryImpl implements MapelRepository {
   }
 
   /// Hanya mapel di Sampah (deleted_at IS NOT NULL), urut terbaru dulu.
+  /// dipakai di HalamanPengaturan._LembarSampah._segarkan
+  /// panggil Db.instance, Mapel.fromMap
   @override
   Future<List<Mapel>> isiSampah() async {
     final db = await Db.instance();
@@ -60,6 +59,8 @@ class MapelRepositoryImpl implements MapelRepository {
   }
 
   /// Cari mapel by ID (termasuk yang di Sampah).
+  /// dipakai di HalamanDetailMapel._segarkan, LayananHapus.hapusPermanenMapel
+  /// panggil Db.instance, Mapel.fromMap
   @override
   Future<Mapel?> cari(int id) async {
     final db = await Db.instance();
@@ -73,6 +74,8 @@ class MapelRepositoryImpl implements MapelRepository {
   }
 
   /// Ubah data mapel (nama, deskripsi, warna). Auto update updated_at.
+  /// dipakai di HalamanDetailMapel._ubahMapel, HalamanPengaturan._LembarSampah._pulihkan
+  /// panggil Db.instance, Mapel.copyWith, Mapel.toMap
   @override
   Future<int> ubah(Mapel mapel) async {
     final db = await Db.instance();
@@ -84,12 +87,13 @@ class MapelRepositoryImpl implements MapelRepository {
     );
   }
 
-  /// Soft delete: hanya mengisi `deleted_at` dengan waktu sekarang.
-  ///
+  /// Soft delete: hanya mengisi deleted_at dengan waktu sekarang.
   /// Mapel hilang dari daftar utama, muncul di Sampah.
   /// Materi & Tugas IKUT terhapus lembut via trigger? TIDAK — mereka
-  /// punya `deleted_at` sendiri tapi tidak diisi otomatis. Lihat [DeleteService]
+  /// punya deleted_at sendiri tapi tidak diisi otomatis. Lihat DeleteService
   /// untuk hapus bersih bersamaan.
+  /// dipakai di HalamanDetailMapel._hapusMapel, HalamanPengaturan._LembarSampah._hapusPermanen (via LayananHapus)
+  /// panggil Db.instance
   @override
   Future<int> hapusLembut(int id) async {
     final db = await Db.instance();
@@ -101,7 +105,9 @@ class MapelRepositoryImpl implements MapelRepository {
     );
   }
 
-  /// Batal soft delete: kosongkan `deleted_at`. Mapel kembali ke daftar utama.
+  /// Batal soft delete: kosongkan deleted_at. Mapel kembali ke daftar utama.
+  /// dipakai di HalamanPengaturan._LembarSampah._pulihkan
+  /// panggil Db.instance
   @override
   Future<int> pulihkan(int id) async {
     final db = await Db.instance();
@@ -114,10 +120,11 @@ class MapelRepositoryImpl implements MapelRepository {
   }
 
   /// Hapus permanen (purge). CASCADE menghapus materi, tugas, lalu lampiran.
-  ///
   /// ⚠️ Pemanggil HARUS menghapus file fisik lampiran SEBELUM memanggil ini
-  /// (lihat [LampiranRepositoryImpl.hapusFileFisik] & [DeleteService.hapusPermanenMapel]).
+  /// (lihat LampiranServiceImpl.hapusFileFisik & DeleteService.hapusPermanenMapel).
   /// Jika file tidak dihapus dulu, file orphan tersisa di storage.
+  /// dipakai di HalamanPengaturan._LembarSampah._hapusPermanen (via LayananHapus)
+  /// panggil Db.instance
   @override
   Future<int> hapusPermanen(int id) async {
     final db = await Db.instance();
@@ -125,6 +132,8 @@ class MapelRepositoryImpl implements MapelRepository {
   }
 
   /// Jumlah mapel aktif (deleted_at IS NULL).
+  /// dipakai di HalamanHome._segarkan
+  /// panggil Db.instance
   @override
   Future<int> jumlah() async {
     final db = await Db.instance();

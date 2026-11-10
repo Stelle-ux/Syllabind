@@ -6,10 +6,8 @@ import 'package:syllabind/tools/dialog_tanya_teks.dart';
 import 'package:syllabind/tools/tema.dart';
 import 'package:syllabind/tools/tokens.dart';
 
-/// Form tambah **atau** ubah mata pelajaran.
-///
-/// Dibungkus supaya halaman Academic (tambah) dan Detail Mapel (ubah) memakai
-/// isian yang sama persis — termasuk color picker-nya.
+/// Form tambah atau ubah mata pelajaran.
+/// dipakai di HalamanAcademic._TabMapel._tambahMapel, HalamanDetailMapel._ubahMapel
 Future<Map<String, Object?>?> tanyaMapel(
   BuildContext context, {
   Mapel? awal,
@@ -27,6 +25,7 @@ Future<Map<String, Object?>?> tanyaMapel(
 }
 
 /// Satu bulatan pilihan warna pada color picker.
+/// dipakai di tanyaTeks (color picker wrap)
 class BulatWarna extends StatelessWidget {
   final String hex;
   final bool terpilih;

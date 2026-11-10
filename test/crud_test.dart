@@ -30,7 +30,7 @@ void main() {
   });
 
   tearDownAll(() async {
-    LampiranRepositoryImpl.folderUji = null;
+      LampiranServiceImpl.folderUji = null;
     LayananEkspor.folderUji = null;
     await Db.tutup();
   });
@@ -48,12 +48,12 @@ void main() {
     // Ikut pola test/lampiran_opsional_test.dart.
     akarUji = Directory(p.join(Directory.current.path, 'build', 'uji_tmp'));
     await akarUji.create(recursive: true);
-    LampiranRepositoryImpl.folderUji = akarUji;
+    LampiranServiceImpl.folderUji = akarUji;
     LayananEkspor.folderUji = akarUji;
   });
 
   /// Membuat satu mapel dan mengembalikan id-nya.
-  Future<int> mapelBaru() => MapelRepositoryImpl().tambah(
+    Future<int> mapelBaru() => MapelServiceImpl().tambah(
         Mapel(nama: 'Matematika', warna: '#4C6FFF'),
       );
 
@@ -62,7 +62,7 @@ void main() {
   group('Ubah catatan', () {
     test('judul dan isi berubah setelah disimpan', () async {
       final mapelId = await mapelBaru();
-      final repo = MateriRepositoryImpl();
+        final repo = MateriServiceImpl();
       final id = await repo.tambah(
         Materi(mapelId: mapelId, judul: 'Lama', isi: 'isi lama'),
       );
@@ -77,7 +77,7 @@ void main() {
 
     test('isi bisa dikosongkan lewat hapusIsi', () async {
       final mapelId = await mapelBaru();
-      final repo = MateriRepositoryImpl();
+          final repo = MateriServiceImpl();
       final id = await repo.tambah(
         Materi(mapelId: mapelId, judul: 'Catatan', isi: 'ada isinya'),
       );
@@ -93,7 +93,7 @@ void main() {
 
     test('ubah catatan tidak memindahkan mapel', () async {
       final mapelId = await mapelBaru();
-      final repo = MateriRepositoryImpl();
+          final repo = MateriServiceImpl();
       final id = await repo.tambah(
         Materi(mapelId: mapelId, judul: 'A', isi: 'x'),
       );
@@ -111,7 +111,7 @@ void main() {
   group('Ubah tugas', () {
     test('judul, deskripsi, dan tenggat berubah setelah disimpan', () async {
       final mapelId = await mapelBaru();
-      final repo = TugasRepositoryImpl();
+        final repo = TugasServiceImpl();
       final id = await repo.tambah(
         Tugas(mapelId: mapelId, judul: 'Tugas lama', deskripsi: 'lama'),
       );
@@ -136,7 +136,7 @@ void main() {
 
     test('tenggat bisa dihapus lewat hapusTenggat', () async {
       final mapelId = await mapelBaru();
-      final repo = TugasRepositoryImpl();
+          final repo = TugasServiceImpl();
       final id = await repo.tambah(
         Tugas(
           mapelId: mapelId,
@@ -157,7 +157,7 @@ void main() {
 
     test('ubah teks tidak mengubah status selesai', () async {
       final mapelId = await mapelBaru();
-      final repo = TugasRepositoryImpl();
+          final repo = TugasServiceImpl();
       final id = await repo.tambah(
         Tugas(mapelId: mapelId, judul: 'Judul asli'),
       );
@@ -177,10 +177,10 @@ void main() {
   group('Ganti nama lampiran', () {
     test('nama berubah tapi materi_id dan lokasi_file tetap', () async {
       final mapelId = await mapelBaru();
-      final materiId = await MateriRepositoryImpl().tambah(
+        final materiId = await MateriServiceImpl().tambah(
         Materi(mapelId: mapelId, judul: 'Catatan'),
       );
-      final repo = LampiranRepositoryImpl();
+        final repo = LampiranServiceImpl();
 
       // tambahDariFile menyalin berkas nyata, jadi sumbernya harus ada.
       // Jangan pakai Directory.systemTemp: di Windows lewat MSYS, TMPDIR bisa
@@ -216,7 +216,7 @@ void main() {
   group('Ekspor per-catatan', () {
     test('menghasilkan .txt berisi judul, isi, dan nama mapel', () async {
       final mapelId = await mapelBaru();
-      final repo = MateriRepositoryImpl();
+        final repo = MateriServiceImpl();
       final id = await repo.tambah(
         Materi(
           mapelId: mapelId,
@@ -243,7 +243,7 @@ void main() {
 
     test('catatan tanpa isi tetap menghasilkan berkas yang sah', () async {
       final mapelId = await mapelBaru();
-      final repo = MateriRepositoryImpl();
+        final repo = MateriServiceImpl();
       final id = await repo.tambah(
         Materi(mapelId: mapelId, judul: 'Catatan Kosong'),
       );
@@ -263,7 +263,7 @@ void main() {
 
     test('ekspor satu catatan tidak menyertakan catatan lain', () async {
       final mapelId = await mapelBaru();
-      final repo = MateriRepositoryImpl();
+          final repo = MateriServiceImpl();
       final idA = await repo.tambah(
         Materi(mapelId: mapelId, judul: 'Catatan A', isi: 'isi A'),
       );
