@@ -23,6 +23,16 @@ class Db {
   /// Semua folder sementara yang pernah dibuat proses ini.
   static final List<Directory> _pernahDibuat = <Directory>[];
 
+  /// Migrasi skema database dari versi lama ke baru.
+  /// dipakai di instance()
+  static Future<void> _migrasi(Database db, double oldVersion, double newVersion) async {
+    if (oldVersion < 1.2) {
+      // Tambah kolom kategori dan prioritas ke tabel tugas
+      await db.execute('ALTER TABLE ${SkemaDb.tabelTugas} ADD COLUMN kategori TEXT');
+      await db.execute('ALTER TABLE ${SkemaDb.tabelTugas} ADD COLUMN prioritas TEXT');
+    }
+  }
+
   /// Mengembalikan instance database singleton, membuatnya bila belum ada.
   /// dipakai di Semua Service (via await Db.instance()), LayananHapus, LayananEkspor, main.dart
   static Future<Database> instance() async {
@@ -43,6 +53,7 @@ class Db {
         options: OpenDatabaseOptions(
           version: SkemaDb.versi,
           onCreate: SkemaDb.buat,
+          onUpgrade: _migrasi,
           onConfigure: (db) async {
             await db.execute('PRAGMA foreign_keys = ON');
           },
@@ -58,6 +69,7 @@ class Db {
       lokasi,
       version: SkemaDb.versi,
       onCreate: SkemaDb.buat,
+      onUpgrade: _migrasi,
       onConfigure: (db) async {
         // WAJIB: SQLite mematikan foreign key secara bawaan.
         // Tanpa baris ini, ON DELETE CASCADE tidak berjalan.

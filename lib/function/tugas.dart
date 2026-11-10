@@ -15,6 +15,12 @@ class Tugas {
   final DateTime updatedAt;
   final DateTime? deletedAt;
 
+  /// Kategori tugas: 'kelompok' | 'individu' (opsional)
+  final String? kategori;
+
+  /// Prioritas otomatis berdasarkan tenggat: 'tinggi' | 'sedang' | 'rendah' (opsional)
+  final String? prioritas;
+
   /// Hanya terisi saat query memakai JOIN ke tabel mata_pelajaran.
   /// Tidak disimpan di tabel tugas.
   final String? namaMapel;
@@ -29,6 +35,8 @@ class Tugas {
     DateTime? createdAt,
     DateTime? updatedAt,
     this.deletedAt,
+    this.kategori,
+    this.prioritas,
     this.namaMapel,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
@@ -55,6 +63,21 @@ class Tugas {
     /// dipakai di HalamanHome._barisTugas, HalamanAcademic._TabTugas, HalamanDetailMapel._TabTugasMapel
     bool get lewatTenggat => sisaHari != null && sisaHari! < 0 && !selesai;
 
+    /// Prioritas berdasarkan tenggat (otomatis dihitung).
+    /// tinggi: <= 3 hari, sedang: <= 7 hari, rendah: <= 14 hari, null: > 14 hari atau tidak ada tenggat.
+    /// dipakai di HalamanHome._barisTugas, HalamanAcademic._TabTugas, HalamanDetailMapel._TabTugasMapel
+    String? get prioritasOtomatis {
+      if (tenggat == null) return null;
+      final hariIni = DateTime.now();
+      final a = DateTime(hariIni.year, hariIni.month, hariIni.day);
+      final b = DateTime(tenggat!.year, tenggat!.month, tenggat!.day);
+      final selisih = b.difference(a).inDays;
+      if (selisih <= 3) return 'tinggi';
+      if (selisih <= 7) return 'sedang';
+      if (selisih <= 14) return 'rendah';
+      return null;
+    }
+
     /// Membuat salinan dengan field yang diubah.
     /// hapusTenggat: true = set tenggat ke null (hapus deadline)
     /// hapusTandaDeletedAt: true = set deletedAt ke null (pulihkan dari sampah)
@@ -70,19 +93,25 @@ class Tugas {
       DateTime? updatedAt,
       DateTime? deletedAt,
       bool hapusTandaDeletedAt = false,
+      String? kategori,
+      bool hapusKategori = false,
+      String? prioritas,
+      bool hapusPrioritas = false,
     }) {
-    return Tugas(
-      id: id ?? this.id,
-      mapelId: mapelId ?? this.mapelId,
-      judul: judul ?? this.judul,
-      deskripsi: deskripsi ?? this.deskripsi,
-      tenggat: hapusTenggat ? null : (tenggat ?? this.tenggat),
-      status: status ?? this.status,
-      createdAt: createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      deletedAt: hapusTandaDeletedAt ? null : (deletedAt ?? this.deletedAt),
-    );
-  }
+      return Tugas(
+        id: id ?? this.id,
+        mapelId: mapelId ?? this.mapelId,
+        judul: judul ?? this.judul,
+        deskripsi: deskripsi ?? this.deskripsi,
+        tenggat: hapusTenggat ? null : (tenggat ?? this.tenggat),
+        status: status ?? this.status,
+        createdAt: createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        deletedAt: hapusTandaDeletedAt ? null : (deletedAt ?? this.deletedAt),
+        kategori: hapusKategori ? null : (kategori ?? this.kategori),
+        prioritas: hapusPrioritas ? null : (prioritas ?? this.prioritas),
+      );
+    }
 
   /// Mengubah ke Map untuk INSERT/UPDATE ke SQLite.
     /// dipakai di RepoTugas.tambah, RepoTugas.ubah, RepoTugas.toggleStatus, RepoTugas.hapusLembut, RepoTugas.pulihkan
@@ -96,6 +125,8 @@ class Tugas {
           'created_at': createdAt.toIso8601String(),
           'updated_at': updatedAt.toIso8601String(),
           'deleted_at': deletedAt?.toIso8601String(),
+          'kategori': kategori,
+          'prioritas': prioritas,
         };
 
     /// Membuat [Tugas] dari baris hasil query SQLite.
@@ -113,6 +144,8 @@ class Tugas {
         deletedAt: m['deleted_at'] == null
             ? null
             : DateTime.parse(m['deleted_at'] as String),
+        kategori: m['kategori'] as String?,
+        prioritas: m['prioritas'] as String?,
         namaMapel: m['nama_mapel'] as String?,
       );
 }

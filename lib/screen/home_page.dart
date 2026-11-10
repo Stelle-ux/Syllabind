@@ -176,7 +176,7 @@ class _HalamanHomeState extends State<HalamanHome> {
     final jam = _kini.hour;
     if (jam < 11) return t('home_sapaan_pagi');
     if (jam < 15) return t('home_sapaan_siang');
-    if (jam < 19) return t('home_sapaan_sore');
+    if (jam < 18) return t('home_sapaan_sore');
     return t('home_sapaan_malam');
   }
 

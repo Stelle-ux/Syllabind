@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 
 import 'package:syllabind/function/mapel.dart';
@@ -787,6 +788,9 @@ class _TabTugasState extends State<_TabTugas> {
   /// dipakai di _tandaiSelesai, itemBuilder
   final Set<int> _sedangProses = {};
 
+  /// Controller untuk animasi confetti saat tugas diselesaikan.
+  late final ConfettiController _confettiController;
+
   @override
   void initState() {
     super.initState();
@@ -794,7 +798,16 @@ class _TabTugasState extends State<_TabTugas> {
     _mapelRepo = MapelServiceImpl();
     _materiRepo = MateriServiceImpl();
     _lampiranRepo = LampiranServiceImpl();
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 2),
+    );
     _segarkan();
+  }
+
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    super.dispose();
   }
 
   /// Memuat ulang daftar tugas dari database dengan filter status opsional.
@@ -809,7 +822,7 @@ class _TabTugasState extends State<_TabTugas> {
     });
   }
 
-  /// Pilih mapel lalu isi dialog; simpan tugas baru (dengan tenggat opsional).
+  /// Pilih mapel lalu isi dialog; simpan tugas baru (dengan tenggat & kategori opsional).
   /// dipakai di build (FAB onPressed, Kosong onTombol)
   Future<void> _tambahTugas() async {
     final daftar = await _mapelRepo.semua();
@@ -828,6 +841,7 @@ class _TabTugasState extends State<_TabTugas> {
       labelIsi: t('dm_deskripsi_opsional'),
       banyakBaris: true,
       denganTenggat: true,
+      denganKategori: true,
     );
     if (hasil == null) return;
 
@@ -837,6 +851,7 @@ class _TabTugasState extends State<_TabTugas> {
         judul: hasil['judul']! as String,
         deskripsi: hasil['isi'] as String?,
         tenggat: hasil['tenggat'] as DateTime?,
+        kategori: hasil['kategori'] as String?,
       ),
     );
     await _segarkan();
@@ -844,7 +859,7 @@ class _TabTugasState extends State<_TabTugas> {
     pesanSukses(context, t('dm_tugas_tersimpan'));
   }
 
-  /// Ubah judul/deskripsi/tenggat tugas lewat dialog tanyaTeks.
+  /// Ubah judul/deskripsi/tenggat/kategori tugas lewat dialog tanyaTeks.
   /// dipakai di build (ListTile onTap, menu Ubah)
   Future<void> _ubahTugas(Tugas g) async {
     final hasil = await tanyaTeks(
@@ -857,6 +872,8 @@ class _TabTugasState extends State<_TabTugas> {
       banyakBaris: true,
       denganTenggat: true,
       tenggatAwal: g.tenggat,
+      denganKategori: true,
+      kategoriAwal: g.kategori,
     );
     if (hasil == null) return;
     final tenggat = hasil['tenggat'] as DateTime?;
@@ -866,6 +883,7 @@ class _TabTugasState extends State<_TabTugas> {
         deskripsi: hasil['isi'] as String?,
         tenggat: tenggat,
         hapusTenggat: tenggat == null,
+        kategori: hasil['kategori'] as String?,
       ),
     );
     await _segarkan();
@@ -893,9 +911,8 @@ class _TabTugasState extends State<_TabTugas> {
   }
 
   /// Ubah status tugas dari daftar: BELUM → SELESAI, atau sebaliknya.
-  /// Tugas langsung dikeluarkan dari daftar yang sedang tampil supaya tidak
-  /// bisa diklik berulang dan daftar tidak melompat. Saat ditandai selesai,
-  /// sediakan "Urungkan" lewat SnackBar.
+  /// Segarkan daftar agar filter (Semua/Belum/Selesai) menentukan visibilitas.
+  /// Saat ditandai selesai, sediakan "Urungkan" lewat SnackBar.
   /// dipakai di build (Checkbox onChanged)
   Future<void> _tandaiSelesai(Tugas g) async {
     final id = g.id;
@@ -904,10 +921,9 @@ class _TabTugasState extends State<_TabTugas> {
     try {
       await _repo.ubahStatus(id, jadiSelesai ? 'SELESAI' : 'BELUM');
       if (!mounted) return;
-      setState(() {
-        _data.removeWhere((x) => x.id == id);
-      });
+      await _segarkan();
       if (!jadiSelesai) return;
+      _confettiController.play();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(tp('home_selesai_pesan', {'judul': g.judul})),
@@ -932,117 +948,172 @@ class _TabTugasState extends State<_TabTugas> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Column(
+      body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              Jarak.j14,
-              Jarak.j12,
-              Jarak.j14,
-              Jarak.j4,
-            ),
-            child: SegmentedButton<String?>(
-              segments: [
-                ButtonSegment(value: null, label: Text(t('ak_semua'))),
-                ButtonSegment(value: 'BELUM', label: Text(t('ak_belum'))),
-                ButtonSegment(value: 'SELESAI', label: Text(t('ak_selesai'))),
-              ],
-              selected: {_saring},
-              onSelectionChanged: (s) {
-                setState(() => _saring = s.first);
-                _segarkan();
-              },
-            ),
-          ),
-          Expanded(
-            child: _muat
-                ? const Center(child: CircularProgressIndicator())
-                : _data.isEmpty
-                ? Kosong(
-                    ikon: Icons.checklist_outlined,
-                    judul: t('ak_tidak_ada_tugas'),
-                    pesan: t('ak_tidak_ada_tugas_pesan'),
-                    labelTombol: t('dm_tambah_tugas'),
-                    onTombol: _tambahTugas,
-                  )
-                : RefreshIndicator(
-                    onRefresh: _segarkan,
-                    child: ListView.separated(
-                      padding: EdgeInsets.fromLTRB(
-                        Jarak.j14,
-                        Jarak.j10,
-                        Jarak.j14,
-                        Ukuran.bebasFAB +
-                            MediaQuery.viewPaddingOf(context).bottom,
-                      ),
-                      itemCount: _data.length,
-                      separatorBuilder: (_, _) =>
-                          const SizedBox(height: Jarak.j10),
-                      itemBuilder: (_, i) {
-                        final g = _data[i];
-                        final selesai = g.selesai;
-                        final lewat = g.lewatTenggat;
-                        final skema = Theme.of(context).colorScheme;
-                        final diproses =
-                            g.id != null && _sedangProses.contains(g.id);
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  Jarak.j14,
+                  Jarak.j12,
+                  Jarak.j14,
+                  Jarak.j4,
+                ),
+                child: SegmentedButton<String?>(
+                  segments: [
+                    ButtonSegment(value: null, label: Text(t('ak_semua'))),
+                    ButtonSegment(value: 'BELUM', label: Text(t('ak_belum'))),
+                    ButtonSegment(value: 'SELESAI', label: Text(t('ak_selesai'))),
+                  ],
+                  selected: {_saring},
+                  onSelectionChanged: (s) {
+                    setState(() => _saring = s.first);
+                    _segarkan();
+                  },
+                ),
+              ),
+              Expanded(
+                child: _muat
+                    ? const Center(child: CircularProgressIndicator())
+                    : _data.isEmpty
+                    ? Kosong(
+                        ikon: Icons.checklist_outlined,
+                        judul: t('ak_tidak_ada_tugas'),
+                        pesan: t('ak_tidak_ada_tugas_pesan'),
+                        labelTombol: t('dm_tambah_tugas'),
+                        onTombol: _tambahTugas,
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _segarkan,
+                        child: ListView.separated(
+                          padding: EdgeInsets.fromLTRB(
+                            Jarak.j14,
+                            Jarak.j10,
+                            Jarak.j14,
+                            Ukuran.bebasFAB +
+                                MediaQuery.viewPaddingOf(context).bottom,
+                          ),
+                          itemCount: _data.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: Jarak.j10),
+                          itemBuilder: (_, i) {
+                            final g = _data[i];
+                            final selesai = g.selesai;
+                            final lewat = g.lewatTenggat;
+                            final skema = Theme.of(context).colorScheme;
+                            final diproses =
+                                g.id != null && _sedangProses.contains(g.id);
 
-                        return Card(
-                          child: ListTile(
-                            leading: Checkbox(
-                              value: selesai,
-                              onChanged: diproses
-                                  ? null
-                                  : (v) => _tandaiSelesai(g),
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            title: Text(
-                              g.judul,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                decoration: selesai
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                              ),
-                            ),
-                            subtitle: Text(
-                              g.namaMapel ?? t('home_tanpa_mapel'),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Tanda(
-                                  teks: selesai
-                                      ? t('ak_selesai')
-                                      : tenggatRelatif(g.tenggat),
-                                  warna: selesai
-                                      ? skema.outline
-                                      : lewat
-                                      ? skema.error
-                                      : skema.primary,
+                            // Prioritas badge
+                            Widget? prioritasBadge;
+                            if (g.prioritas != null) {
+                              final prioritas = g.prioritas!;
+                              Color warnaPrioritas;
+                              String labelPrioritas;
+                              switch (prioritas) {
+                                case 'tinggi':
+                                  warnaPrioritas = skema.error;
+                                  labelPrioritas = t('dm_prioritas_tinggi');
+                                  break;
+                                case 'sedang':
+                                  warnaPrioritas = Colors.orange;
+                                  labelPrioritas = t('dm_prioritas_sedang');
+                                  break;
+                                case 'rendah':
+                                  warnaPrioritas = Colors.green;
+                                  labelPrioritas = t('dm_prioritas_rendah');
+                                  break;
+                                default:
+                                  warnaPrioritas = skema.outline;
+                                  labelPrioritas = prioritas;
+                              }
+                              prioritasBadge = Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: Jarak.j6,
+                                  vertical: Jarak.j2,
                                 ),
-                                PopupMenuButton<String>(
-                                  onSelected: (v) async {
-                                    if (v == 'ubah') await _ubahTugas(g);
-                                    if (v == 'hapus') await _hapusTugas(g);
-                                  },
-                                  itemBuilder: (_) => [
-                                    PopupMenuItem(
-                                      value: 'ubah',
-                                      child: Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.edit_outlined,
-                                            size: Ikon.sm,
-                                          ),
-                                          const SizedBox(width: Jarak.j8),
-                                          Flexible(child: Text(t('k_ubah'))),
-                                        ],
-                                      ),
+                                decoration: BoxDecoration(
+                                  color: warnaPrioritas.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(Jarak.j4),
+                                  border: Border.all(color: warnaPrioritas),
+                                ),
+                                child: Text(
+                                  labelPrioritas,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: warnaPrioritas,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return Card(
+                              child: ListTile(
+                                leading: Checkbox(
+                                  value: selesai,
+                                  onChanged: diproses
+                                      ? null
+                                      : (v) => _tandaiSelesai(g),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                title: Text(
+                                  g.judul,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    decoration: selesai
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      g.namaMapel ?? t('home_tanpa_mapel'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                                    if (prioritasBadge != null) ...[
+                                      const SizedBox(height: Jarak.j4),
+                                      prioritasBadge,
+                                    ],
+                                  ],
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Tanda(
+                                      teks: selesai
+                                          ? t('ak_selesai')
+                                          : tenggatRelatif(g.tenggat),
+                                      warna: selesai
+                                          ? skema.outline
+                                          : lewat
+                                          ? skema.error
+                                          : skema.primary,
+                                    ),
+                                    PopupMenuButton<String>(
+                                      onSelected: (v) async {
+                                        if (v == 'ubah') await _ubahTugas(g);
+                                        if (v == 'hapus') await _hapusTugas(g);
+                                      },
+                                      itemBuilder: (_) => [
+                                        PopupMenuItem(
+                                          value: 'ubah',
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.edit_outlined,
+                                                size: Ikon.sm,
+                                              ),
+                                              const SizedBox(width: Jarak.j8),
+                                              Flexible(child: Text(t('k_ubah'))),
+                                            ],
+                                          ),
+                                        ),
                                     PopupMenuItem(
                                       value: 'hapus',
                                       child: Row(
@@ -1074,9 +1145,33 @@ class _TabTugasState extends State<_TabTugas> {
                       },
                     ),
                   ),
-          ),
-        ],
-      ),
+                ),
+              ],
+            ),
+            // Confetti animation overlay
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirection: -3.14 / 2, // Upwards
+                blastDirectionality: BlastDirectionality.explosive,
+                shouldLoop: false,
+                numberOfParticles: 30,
+                maxBlastForce: 10,
+                minBlastForce: 5,
+                gravity: 0.3,
+                colors: const [
+                  Colors.red,
+                  Colors.blue,
+                  Colors.green,
+                  Colors.yellow,
+                  Colors.pink,
+                  Colors.purple,
+                ],
+              ),
+            ),
+          ],
+        ),
       floatingActionButton: _data.isEmpty
           ? null
           : FloatingActionButton.extended(

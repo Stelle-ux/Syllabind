@@ -25,6 +25,8 @@ Future<Map<String, Object?>?> tanyaTeks(
   bool isiWajib = true,
   bool denganLampiran = false,
   bool denganWarna = false,
+  bool denganKategori = false,
+  String? kategoriAwal,
   String? warnaAwal,
   DateTime? tenggatAwal,
 }) async {
@@ -34,6 +36,7 @@ Future<Map<String, Object?>?> tanyaTeks(
 
   DateTime? tenggat = tenggatAwal;
   String? warna = warnaAwal;
+  String? kategori = kategoriAwal;
   File? lampiran;
   String? lampiranTipe;
 
@@ -96,6 +99,39 @@ Future<Map<String, Object?>?> tanyaTeks(
                       onPressed: () => setDialog(() => tenggat = null),
                       child: Text(t('k_hapus_tenggat')),
                     ),
+                ],
+                if (denganKategori) ...[
+                  const SizedBox(height: Jarak.j14),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      t('dm_kategori_tugas'),
+                      style: Theme.of(ctx).textTheme.bodySmall,
+                    ),
+                  ),
+                  const SizedBox(height: Jarak.j8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: Text(t('dm_kategori_kelompok')),
+                          value: 'kelompok',
+                          groupValue: kategori,
+                          onChanged: (v) => setDialog(() => kategori = v),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: Text(t('dm_kategori_individu')),
+                          value: 'individu',
+                          groupValue: kategori,
+                          onChanged: (v) => setDialog(() => kategori = v),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
                 if (denganWarna) ...[
                   const SizedBox(height: Jarak.j14),
@@ -231,6 +267,7 @@ Future<Map<String, Object?>?> tanyaTeks(
     'judul': kJudul.text.trim(),
     'isi': isi.isEmpty ? null : isi,
     'tenggat': tenggat,
+    'kategori': kategori,
     'lampiran': lampiran,
     'lampiranTipe': lampiranTipe,
     'warna': warna,

@@ -15,7 +15,7 @@ class SkemaDb {
 
   /// Versi skema database. Naikkan saat migrasi.
   /// dipakai di [Db.init]
-  static const int versi = 1;
+  static const double versi = 1.2;
 
   /// Nama tabel mata pelajaran.
   /// dipakai di [RepoMapel], [RepoMateri], [RepoTugas], [LayananHapus], [SkemaDb.buat]
@@ -95,6 +95,8 @@ class SkemaDb {
         created_at  TEXT    NOT NULL,
         updated_at  TEXT    NOT NULL,
         deleted_at  TEXT,
+        kategori    TEXT,
+        prioritas   TEXT,
         FOREIGN KEY (mapel_id) REFERENCES $tabelMapel (id) ON DELETE CASCADE
       )
     ''');
@@ -136,7 +138,7 @@ class SkemaDb {
     for (final kv in {
       'tema': 'system', // system | terang | gelap
       'warna_aksen': '#2F6F6B',
-      'versi_skema': '1',
+      'versi_skema': '1.2',
       'dibuat_pada': now,
     }.entries) {
       await db.insert(tabelPengaturan, {

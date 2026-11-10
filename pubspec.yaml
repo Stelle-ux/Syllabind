@@ -24,6 +24,9 @@ dependencies:
   mime: ^1.0.6             # tentukan tipe MIME berkas
   open_filex: ^4.6.0       # buka lampiran dengan aplikasi bawaan
 
+  # --- Animasi ---
+  confetti: ^0.8.0         # animasi confetti untuk perayaan
+
   # --- Pengaturan ---
   dynamic_color: ^1.7.0    # tema mengikuti warna sistem
 

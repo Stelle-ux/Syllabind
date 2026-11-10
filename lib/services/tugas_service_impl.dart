@@ -14,12 +14,16 @@ import 'package:syllabind/services/tugas_service.dart';
 class TugasServiceImpl implements TugasService {
   /// Menambah tugas baru ke dalam mapel.
   /// Returns: id baris yang baru disisipkan.
+  /// Otomatis menghitung prioritas berdasarkan tenggat.
   /// dipakai di HalamanDetailMapel._TabTugasMapel._tambahTugas
-  /// panggil Db.instance, Tugas.toMap
+  /// panggil Db.instance, Tugas.toMap, Tugas.prioritasOtomatis
   @override
   Future<int> tambah(Tugas tugas) async {
     final db = await Db.instance();
-    return db.insert(SkemaDb.tabelTugas, tugas.toMap());
+    final tugasDenganPrioritas = tugas.copyWith(
+      prioritas: tugas.prioritasOtomatis,
+    );
+    return db.insert(SkemaDb.tabelTugas, tugasDenganPrioritas.toMap());
   }
 
   /// Semua tugas dalam satu mapel (untuk tab Tugas di Detail Mapel).
@@ -128,14 +132,19 @@ class TugasServiceImpl implements TugasService {
   }
 
   /// Ubah data tugas (judul, deskripsi, tenggat). Auto update updated_at.
+  /// Otomatis menghitung ulang prioritas jika tenggat berubah.
   /// dipakai di HalamanDetailMapel._TabTugasMapel._ubahTugas
-  /// panggil Db.instance, Tugas.copyWith, Tugas.toMap
+  /// panggil Db.instance, Tugas.copyWith, Tugas.toMap, Tugas.prioritasOtomatis
   @override
   Future<int> ubah(Tugas tugas) async {
     final db = await Db.instance();
+    final tugasDenganPrioritas = tugas.copyWith(
+      updatedAt: DateTime.now(),
+      prioritas: tugas.prioritasOtomatis,
+    );
     return db.update(
       SkemaDb.tabelTugas,
-      tugas.copyWith(updatedAt: DateTime.now()).toMap(),
+      tugasDenganPrioritas.toMap(),
       where: 'id = ?',
       whereArgs: [tugas.id],
     );

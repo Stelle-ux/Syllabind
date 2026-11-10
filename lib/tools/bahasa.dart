@@ -305,6 +305,14 @@ const Map<String, List<String>> _kamus = {
   ],
   'dm_catatan_tersimpan': ['Catatan ditambahkan.', 'Note added.'],
   'dm_tugas_tersimpan': ['Tugas ditambahkan.', 'Task added.'],
+  'dm_tugas_diubah': ['Perubahan tugas disimpan.', 'Task changes saved.'],
+  'dm_kategori_tugas': ['Kategori tugas', 'Task category'],
+  'dm_kategori_kelompok': ['Kelompok', 'Group'],
+  'dm_kategori_individu': ['Individu', 'Individual'],
+  'dm_prioritas_tinggi': ['Prioritas: Tinggi', 'Priority: High'],
+  'dm_prioritas_sedang': ['Prioritas: Sedang', 'Priority: Medium'],
+  'dm_prioritas_rendah': ['Prioritas: Rendah', 'Priority: Low'],
+  'dm_prioritas_tidak_ada': ['Prioritas: —', 'Priority: —'],
   'dm_lampiran_ditambah': ['Lampiran ditambahkan.', 'Attachment added.'],
   'dm_rincian_catatan': [
     'Seluruh catatan (materi) di dalamnya',
@@ -382,7 +390,6 @@ const Map<String, List<String>> _kamus = {
   // Pesan simpan khusus EDIT — 'dm_catatan_tersimpan' yang lama berisi
   // "Catatan ditambahkan." (untuk tambah), jadi jangan dipakai ulang di sini.
   'dm_catatan_diubah': ['Perubahan catatan disimpan.', 'Note changes saved.'],
-  'dm_tugas_diubah': ['Perubahan tugas disimpan.', 'Task changes saved.'],
   'lib_ubah_nama_judul': ['Ganti nama lampiran', 'Rename attachment'],
   'lib_ubah_nama_label': ['Nama baru', 'New name'],
   'lib_ubah_nama_sukses': ['Nama diperbarui.', 'Name updated.'],
